@@ -130,3 +130,7 @@ Google Gemini（文本增强）常用配置
 
 录音效果
 ![录音效果](screenshots/record.png)
+
+## 许可证
+
+本项目采用 Apache License 2.0 协议发布，详见 [LICENSE](LICENSE)。

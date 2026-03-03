@@ -132,3 +132,7 @@ Used to refine colloquial sentences into smoother text. There are online models 
 Recording effect
 ![Recording effect](screenshots/record.png)
 
+## License
+
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
+

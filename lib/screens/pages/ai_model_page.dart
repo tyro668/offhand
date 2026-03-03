@@ -364,71 +364,47 @@ class _AddModelDialogState extends State<_AddModelDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            l10n.addTextModel,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: _cs.onSurface,
+                child: _isLocalModel
+                    ? _buildLocalModelDialogBody(l10n)
+                    : SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDialogHeader(l10n),
+                            const SizedBox(height: 14),
+                            FormFieldLabel(l10n.vendor, required: true),
+                            const SizedBox(height: 6),
+                            _buildVendorDropdown(l10n),
+                            const SizedBox(height: 12),
+                            FormFieldLabel(l10n.model, required: true),
+                            const SizedBox(height: 6),
+                            if (_isCustom)
+                              _buildTextField(
+                                controller: _customModelController,
+                                hintText: l10n.enterModelName('gpt-4o-mini'),
+                              )
+                            else
+                              _buildModelDropdown(l10n),
+                            const SizedBox(height: 12),
+                            if (_isCustom) ...[
+                              FormFieldLabel(l10n.endpointUrl, required: true),
+                              const SizedBox(height: 6),
+                              _buildTextField(
+                                controller: _customBaseUrlController,
+                                hintText: 'https://api.openai.com/v1',
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            FormFieldLabel(l10n.apiKey, required: true),
+                            const SizedBox(height: 6),
+                            _buildTextField(
+                              controller: _apiKeyController,
+                              hintText: l10n.enterApiKey,
+                              obscureText: true,
                             ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 18),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-
-                      FormFieldLabel(l10n.vendor, required: true),
-                      const SizedBox(height: 6),
-                      _buildVendorDropdown(l10n),
-                      const SizedBox(height: 12),
-
-                      if (_isLocalModel)
-                        _buildLocalModelSection(l10n)
-                      else ...[
-                        FormFieldLabel(l10n.model, required: true),
-                        const SizedBox(height: 6),
-                        if (_isCustom)
-                          _buildTextField(
-                            controller: _customModelController,
-                            hintText: l10n.enterModelName('gpt-4o-mini'),
-                          )
-                        else
-                          _buildModelDropdown(l10n),
-                        const SizedBox(height: 12),
-
-                        if (_isCustom) ...[
-                          FormFieldLabel(l10n.endpointUrl, required: true),
-                          const SizedBox(height: 6),
-                          _buildTextField(
-                            controller: _customBaseUrlController,
-                            hintText: 'https://api.openai.com/v1',
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-
-                        FormFieldLabel(l10n.apiKey, required: true),
-                        const SizedBox(height: 6),
-                        _buildTextField(
-                          controller: _apiKeyController,
-                          hintText: l10n.enterApiKey,
-                          obscureText: true,
+                          ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
+                      ),
               ),
               const SizedBox(height: 14),
               const Divider(height: 1),
@@ -459,11 +435,38 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     );
   }
 
-  // ---- 本地模型专用 UI ----
-  Widget _buildLocalModelSection(AppLocalizations l10n) {
+  Widget _buildDialogHeader(AppLocalizations l10n) {
+    return Row(
+      children: [
+        Text(
+          l10n.addTextModel,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: _cs.onSurface,
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          icon: const Icon(Icons.close, size: 18),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocalModelDialogBody(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildDialogHeader(l10n),
+        const SizedBox(height: 14),
+        FormFieldLabel(l10n.vendor, required: true),
+        const SizedBox(height: 6),
+        _buildVendorDropdown(l10n),
+        const SizedBox(height: 12),
         FormFieldLabel(l10n.selectModel, required: true),
         if (_recommendationSummary != null) ...[
           const SizedBox(height: 8),
@@ -491,8 +494,15 @@ class _AddModelDialogState extends State<_AddModelDialog> {
           ),
         ],
         const SizedBox(height: 8),
-        ...kLocalLlmModels.map((m) => _buildModelDownloadTile(m)),
-        const SizedBox(height: 12),
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              ...kLocalLlmModels.map((m) => _buildModelDownloadTile(m)),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
       ],
     );
   }
