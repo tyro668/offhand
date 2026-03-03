@@ -292,7 +292,7 @@
       }
     }
   },
-  "userLabel": "User{id}",
+  "userLabel": "speaker{id}",
   "@userLabel": {
     "placeholders": {
       "id": {
@@ -300,7 +300,7 @@
       }
     }
   },
-  "userIdLabel": "User ID: {user}",
+  "userIdLabel": "{user}",
   "@userIdLabel": {
     "placeholders": {
       "user": {
@@ -681,6 +681,9 @@
   "localModelAiHint": "Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.",
   "localAiQ5Desc": "Qwen2.5 0.5B Q5_K_M (~400MB) - Recommended, balanced quality and speed",
   "localAiQ4Desc": "Qwen2.5 0.5B Q4_K_M (~350MB) - Smaller and faster",
+  "localAiQwen35_2BDesc": "Qwen3.5 2B Q4_K_M (~1.5GB) - Lightweight next-gen, notable quality boost",
+  "localAiQwen35_4BDesc": "Qwen3.5 4B Q4_K_M (~2.7GB) - Recommended, balanced speed and quality",
+  "localAiQwen35_9BDesc": "Qwen3.5 9B Q4_K_M (~5.5GB) - High quality, 16GB+ RAM recommended",
   "download": "Download",
   "downloaded": "Downloaded",
   "customTemplateSummary": "Custom Template",

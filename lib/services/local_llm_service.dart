@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/services.dart';
 import 'package:llamadart/llamadart.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-
-import 'log_service.dart';
+import 'package:voicetype/services/log_service.dart';
 
 /// 可下载的本地 LLM 模型定义
 class LocalLlmModel {
@@ -32,18 +30,58 @@ const _kDefaultLlmModelHosts = [
 /// 预定义可下载模型列表
 const kLocalLlmModels = [
   LocalLlmModel(
-    fileName: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
-    description: 'Qwen2.5 7B Q4_K_M (~4.7GB) - 最推荐',
-    approximateSizeMB: 4700,
+    fileName: 'Qwen3.5-2B-Q4_K_M.gguf',
+    description: 'Qwen3.5 2B Q4_K_M (~1.5GB) - 轻量新一代，质量提升显著',
+    approximateSizeMB: 1500,
     downloadHosts: [
-      'https://hf-mirror.com/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main',
-      'https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main',
+      'https://hf-mirror.com/unsloth/Qwen3.5-2B-GGUF/resolve/main',
+      'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
+    fileName: 'Qwen3.5-4B-Q4_K_M.gguf',
+    description: 'Qwen3.5 4B Q4_K_M (~2.7GB) - 推荐，速度与质量均衡',
+    approximateSizeMB: 2700,
+    downloadHosts: [
+      'https://hf-mirror.com/unsloth/Qwen3.5-4B-GGUF/resolve/main',
+      'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
+    fileName: 'Qwen3.5-9B-Q4_K_M.gguf',
+    description: 'Qwen3.5 9B Q4_K_M (~5.5GB) - 高质量，16GB+ 内存推荐',
+    approximateSizeMB: 5500,
+    downloadHosts: [
+      'https://hf-mirror.com/unsloth/Qwen3.5-9B-GGUF/resolve/main',
+      'https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main',
     ],
   ),
   LocalLlmModel(
     fileName: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
     description: 'Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐，质量与速度平衡',
     approximateSizeMB: 400,
+    downloadHosts: [
+      'https://hf-mirror.com/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+      'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
+    fileName: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+    description: 'Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快',
+    approximateSizeMB: 350,
+    downloadHosts: [
+      'https://hf-mirror.com/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+      'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
+    fileName: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
+    description: 'Qwen2.5 7B Q4_K_M (~4.7GB) - 中等显存推荐',
+    approximateSizeMB: 4700,
+    downloadHosts: [
+      'https://hf-mirror.com/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main',
+      'https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main',
+    ],
   ),
   LocalLlmModel(
     fileName: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf',
@@ -55,12 +93,12 @@ const kLocalLlmModels = [
     ],
   ),
   LocalLlmModel(
-    fileName: 'DeepSeek-V2-Lite-Chat-Q4_K_M.gguf',
-    description: 'DeepSeek-V2-Lite (16B) Q4_K_M (~9.8GB) - 12G 显存可跑',
-    approximateSizeMB: 9800,
+    fileName: 'DeepSeek-V2.5-IQ2_M.gguf',
+    description: 'DeepSeek-V2.5 Lite (IQ2_M, ~80GB+) - 超大模型轻量量化',
+    approximateSizeMB: 80000,
     downloadHosts: [
-      'https://hf-mirror.com/bartowski/DeepSeek-V2-Lite-Chat-GGUF/resolve/main',
-      'https://huggingface.co/bartowski/DeepSeek-V2-Lite-Chat-GGUF/resolve/main',
+      'https://hf-mirror.com/bartowski/DeepSeek-V2.5-GGUF/resolve/main',
+      'https://huggingface.co/bartowski/DeepSeek-V2.5-GGUF/resolve/main',
     ],
   ),
 ];
@@ -90,7 +128,6 @@ class LocalLlmService {
   static int _activeInferenceCount = 0;
   static Duration _idleUnloadDelay = const Duration(minutes: 3);
 
-  static bool get isEngineLoaded => _engine != null;
   static int get idleUnloadMinutes => _idleUnloadDelay.inMinutes;
 
   static Future<void> setIdleUnloadMinutes(int minutes) async {
@@ -115,9 +152,13 @@ class LocalLlmService {
   }
 
   static const _kModelQwen05Q5 = 'qwen2.5-0.5b-instruct-q5_k_m.gguf';
+  static const _kModelQwen05Q4 = 'qwen2.5-0.5b-instruct-q4_k_m.gguf';
   static const _kModelQwen7BQ4 = 'Qwen2.5-7B-Instruct-Q4_K_M.gguf';
   static const _kModelQwen14BQ4 = 'Qwen2.5-14B-Instruct-Q4_K_M.gguf';
-  static const _kModelDeepSeekLite = 'DeepSeek-V2-Lite-Chat-Q4_K_M.gguf';
+  static const _kModelDeepSeekLite = 'DeepSeek-V2.5-IQ2_M.gguf';
+  static const _kModelQwen35_2B = 'Qwen3.5-2B-Q4_K_M.gguf';
+  static const _kModelQwen35_4B = 'Qwen3.5-4B-Q4_K_M.gguf';
+  static const _kModelQwen35_9B = 'Qwen3.5-9B-Q4_K_M.gguf';
 
   /// 获取应用数据根目录
   static Future<String> get _appDataDir async {
@@ -125,30 +166,19 @@ class LocalLlmService {
     return appDir.path;
   }
 
-  static String? _localPromptCache;
-
-  static Future<String> get localPrompt async {
-    if (_localPromptCache != null) return _localPromptCache!;
-    try {
-      _localPromptCache = await rootBundle.loadString(
-        'assets/prompts/local_model_prompt.md',
-      );
-    } catch (_) {
-      _localPromptCache = '你是文字编辑助手。清理语音转文字文本：删除语气词和重复词，修正标点，保持原意。直接输出结果。';
-    }
-    return _localPromptCache!;
-  }
-
+  /// 获取 LLM 模型目录
   static Future<String> get defaultModelDir async {
     final root = await _appDataDir;
     return p.join(root, 'llm-models');
   }
 
+  /// 检查模型文件是否已下载
   static Future<bool> isModelDownloaded(String fileName) async {
     final dir = await defaultModelDir;
     return File(p.join(dir, fileName)).exists();
   }
 
+  /// 获取模型文件完整路径
   static Future<String> modelFilePath(String fileName) async {
     final dir = await defaultModelDir;
     return p.join(dir, fileName);
@@ -174,34 +204,58 @@ class LocalLlmService {
     if (memoryGb != null) {
       if (memoryGb >= 128 && cores >= 16) {
         recommended
+          ..add(_kModelQwen35_9B)
           ..add(_kModelDeepSeekLite)
           ..add(_kModelQwen14BQ4)
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else if (memoryGb >= 48) {
         recommended
+          ..add(_kModelQwen35_9B)
           ..add(_kModelQwen14BQ4)
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else if (memoryGb >= 24) {
         recommended
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
-          ..add(_kModelQwen05Q5);
+          ..add(_kModelQwen35_2B)
+          ..add(_kModelQwen05Q5)
+          ..add(_kModelQwen05Q4);
+      } else if (memoryGb >= 8) {
+        recommended
+          ..add(_kModelQwen35_2B)
+          ..add(_kModelQwen05Q5)
+          ..add(_kModelQwen05Q4);
       } else {
-        recommended.add(_kModelQwen05Q5);
+        recommended
+          ..add(_kModelQwen05Q5)
+          ..add(_kModelQwen05Q4);
       }
     } else {
       if (cores >= 16) {
         recommended
+          ..add(_kModelQwen35_9B)
           ..add(_kModelQwen14BQ4)
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else if (cores >= 8) {
         recommended
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else {
-        recommended.add(_kModelQwen05Q5);
+        recommended
+          ..add(_kModelQwen35_2B)
+          ..add(_kModelQwen05Q5)
+          ..add(_kModelQwen05Q4);
       }
     }
 
@@ -260,6 +314,25 @@ class LocalLlmService {
     return null;
   }
 
+  /// 检查引擎是否已加载
+  static bool get isEngineLoaded => _engine != null;
+
+  /// 本地模型专用提示词（针对小模型优化，简洁直接）
+  static String? _localPromptCache;
+
+  static Future<String> get localPrompt async {
+    if (_localPromptCache != null) return _localPromptCache!;
+    try {
+      _localPromptCache = await rootBundle.loadString(
+        'assets/prompts/local_model_prompt.md',
+      );
+    } catch (_) {
+      _localPromptCache = '你是文字编辑助手。清理语音转文字文本：删除语气词和重复词，修正标点，保持原意。直接输出结果。';
+    }
+    return _localPromptCache!;
+  }
+
+  /// 下载 LLM 模型文件（带镜像切换）
   static Future<void> downloadModel(
     LocalLlmModel model, {
     required void Function(double progress) onProgress,
@@ -354,6 +427,7 @@ class LocalLlmService {
     throw LocalLlmException('所有下载源均失败，请检查网络连接\n最后错误: $lastError');
   }
 
+  /// 删除已下载的模型文件
   static Future<void> deleteModel(String fileName) async {
     final dir = await defaultModelDir;
     final file = File(p.join(dir, fileName));
@@ -362,6 +436,7 @@ class LocalLlmService {
     }
   }
 
+  /// 加载模型到引擎（如果尚未加载或模型不同）
   static Future<void> loadModel(String modelFileName) async {
     _idleUnloadTimer?.cancel();
     _idleUnloadTimer = null;
@@ -377,31 +452,20 @@ class LocalLlmService {
 
     await LogService.info('LOCAL_LLM', 'loading model: $modelPath');
 
-    final gpuLayers = _resolveGpuLayers(modelFileName);
-    await LogService.info(
-      'LOCAL_LLM',
-      'model params: contextSize=2048 gpuLayers=$gpuLayers',
-    );
-
     _engine = LlamaEngine(LlamaBackend());
     await _engine!.loadModel(
       modelPath,
-      modelParams: ModelParams(contextSize: 2048, gpuLayers: gpuLayers),
+      modelParams: const ModelParams(
+        contextSize: 2048,
+        gpuLayers: ModelParams.maxGpuLayers,
+      ),
     );
     _currentModel = modelFileName;
 
     await LogService.info('LOCAL_LLM', 'model loaded: $modelFileName');
   }
 
-  static int _resolveGpuLayers(String modelFileName) {
-    final lower = modelFileName.toLowerCase();
-    // 16B 本地模型默认采用保守的部分 GPU offload，避免 12G 显存设备 OOM。
-    if (lower.contains('deepseek-v2-lite')) {
-      return 20;
-    }
-    return ModelParams.maxGpuLayers;
-  }
-
+  /// 卸载当前模型，释放资源
   static Future<void> unloadModel() async {
     _idleUnloadTimer?.cancel();
     _idleUnloadTimer = null;
@@ -413,6 +477,7 @@ class LocalLlmService {
     }
   }
 
+  /// 使用本地模型进行文本增强（chat completion）
   static Future<String> enhance({
     required String modelFileName,
     required String systemPrompt,
@@ -476,6 +541,7 @@ class LocalLlmService {
     });
   }
 
+  /// 检查本地模型可用性
   static Future<LocalLlmCheckResult> checkAvailability(
     String modelFileName,
   ) async {

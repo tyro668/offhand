@@ -287,7 +287,7 @@
       }
     }
   },
-  "userLabel": "用户{id}",
+  "userLabel": "说话人{id}",
   "@userLabel": {
     "placeholders": {
       "id": {
@@ -295,7 +295,7 @@
       }
     }
   },
-  "userIdLabel": "用户ID: {user}",
+  "userIdLabel": "{user}",
   "@userIdLabel": {
     "placeholders": {
       "user": {
@@ -676,6 +676,9 @@
   "localModelAiHint": "本地模型通过 FFI 直接调用 llama.cpp，无需联网即可使用，支持 macOS 和 Windows",
   "localAiQ5Desc": "Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐，质量与速度平衡",
   "localAiQ4Desc": "Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快",
+  "localAiQwen35_2BDesc": "Qwen3.5 2B Q4_K_M (~1.5GB) - 轻量新一代，质量提升显著",
+  "localAiQwen35_4BDesc": "Qwen3.5 4B Q4_K_M (~2.7GB) - 推荐，速度与质量均衡",
+  "localAiQwen35_9BDesc": "Qwen3.5 9B Q4_K_M (~5.5GB) - 高质量，16GB+ 内存推荐",
   "download": "下载",
   "downloaded": "已下载",
   "customTemplateSummary": "自定义模板",

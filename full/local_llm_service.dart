@@ -30,14 +30,49 @@ const _kDefaultLlmModelHosts = [
 /// 预定义可下载模型列表
 const kLocalLlmModels = [
   LocalLlmModel(
+    fileName: 'Qwen3.5-2B-Q4_K_M.gguf',
+    description: 'Qwen3.5 2B Q4_K_M (~1.5GB) - 轻量新一代，质量提升显著',
+    approximateSizeMB: 1500,
+    downloadHosts: [
+      'https://hf-mirror.com/unsloth/Qwen3.5-2B-GGUF/resolve/main',
+      'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
+    fileName: 'Qwen3.5-4B-Q4_K_M.gguf',
+    description: 'Qwen3.5 4B Q4_K_M (~2.7GB) - 推荐，速度与质量均衡',
+    approximateSizeMB: 2700,
+    downloadHosts: [
+      'https://hf-mirror.com/unsloth/Qwen3.5-4B-GGUF/resolve/main',
+      'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
+    fileName: 'Qwen3.5-9B-Q4_K_M.gguf',
+    description: 'Qwen3.5 9B Q4_K_M (~5.5GB) - 高质量，16GB+ 内存推荐',
+    approximateSizeMB: 5500,
+    downloadHosts: [
+      'https://hf-mirror.com/unsloth/Qwen3.5-9B-GGUF/resolve/main',
+      'https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main',
+    ],
+  ),
+  LocalLlmModel(
     fileName: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
     description: 'Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐，质量与速度平衡',
     approximateSizeMB: 400,
+    downloadHosts: [
+      'https://hf-mirror.com/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+      'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+    ],
   ),
   LocalLlmModel(
     fileName: 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
     description: 'Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快',
     approximateSizeMB: 350,
+    downloadHosts: [
+      'https://hf-mirror.com/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+      'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main',
+    ],
   ),
   LocalLlmModel(
     fileName: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
@@ -121,6 +156,9 @@ class LocalLlmService {
   static const _kModelQwen7BQ4 = 'Qwen2.5-7B-Instruct-Q4_K_M.gguf';
   static const _kModelQwen14BQ4 = 'Qwen2.5-14B-Instruct-Q4_K_M.gguf';
   static const _kModelDeepSeekLite = 'DeepSeek-V2.5-IQ2_M.gguf';
+  static const _kModelQwen35_2B = 'Qwen3.5-2B-Q4_K_M.gguf';
+  static const _kModelQwen35_4B = 'Qwen3.5-4B-Q4_K_M.gguf';
+  static const _kModelQwen35_9B = 'Qwen3.5-9B-Q4_K_M.gguf';
 
   /// 获取应用数据根目录
   static Future<String> get _appDataDir async {
@@ -166,18 +204,31 @@ class LocalLlmService {
     if (memoryGb != null) {
       if (memoryGb >= 128 && cores >= 16) {
         recommended
+          ..add(_kModelQwen35_9B)
           ..add(_kModelDeepSeekLite)
           ..add(_kModelQwen14BQ4)
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else if (memoryGb >= 48) {
         recommended
+          ..add(_kModelQwen35_9B)
           ..add(_kModelQwen14BQ4)
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else if (memoryGb >= 24) {
         recommended
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
+          ..add(_kModelQwen05Q5)
+          ..add(_kModelQwen05Q4);
+      } else if (memoryGb >= 8) {
+        recommended
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5)
           ..add(_kModelQwen05Q4);
       } else {
@@ -188,15 +239,21 @@ class LocalLlmService {
     } else {
       if (cores >= 16) {
         recommended
+          ..add(_kModelQwen35_9B)
           ..add(_kModelQwen14BQ4)
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else if (cores >= 8) {
         recommended
+          ..add(_kModelQwen35_4B)
           ..add(_kModelQwen7BQ4)
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5);
       } else {
         recommended
+          ..add(_kModelQwen35_2B)
           ..add(_kModelQwen05Q5)
           ..add(_kModelQwen05Q4);
       }

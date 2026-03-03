@@ -280,6 +280,12 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         return l10n.localAiQ5Desc;
       case 'qwen2.5-0.5b-instruct-q4_k_m.gguf':
         return l10n.localAiQ4Desc;
+      case 'Qwen3.5-2B-Q4_K_M.gguf':
+        return l10n.localAiQwen35_2BDesc;
+      case 'Qwen3.5-4B-Q4_K_M.gguf':
+        return l10n.localAiQwen35_4BDesc;
+      case 'Qwen3.5-9B-Q4_K_M.gguf':
+        return l10n.localAiQwen35_9BDesc;
       default:
         return model.description;
     }
@@ -496,8 +502,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     final downloaded = _modelDownloaded[model.fileName];
     final isDownloading = _downloading && isSelected;
     final isRecommended = _recommendedModelFileNames.contains(model.fileName);
-    final isTopRecommended =
-        model.fileName == 'Qwen2.5-7B-Instruct-Q4_K_M.gguf';
+    final isTopRecommended = model.fileName == 'Qwen3.5-4B-Q4_K_M.gguf';
 
     return FutureBuilder<bool>(
       future: downloaded != null

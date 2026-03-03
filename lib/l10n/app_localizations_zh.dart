@@ -714,12 +714,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String userLabel(String id) {
-    return '用户$id';
+    return '说话人$id';
   }
 
   @override
   String userIdLabel(String user) {
-    return '用户ID: $user';
+    return '$user';
   }
 
   @override
@@ -1536,6 +1536,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localAiQ4Desc => 'Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快';
+
+  @override
+  String get localAiQwen35_2BDesc =>
+      'Qwen3.5 2B Q4_K_M (~1.5GB) - 轻量新一代，质量提升显著';
+
+  @override
+  String get localAiQwen35_4BDesc => 'Qwen3.5 4B Q4_K_M (~2.7GB) - 推荐，速度与质量均衡';
+
+  @override
+  String get localAiQwen35_9BDesc =>
+      'Qwen3.5 9B Q4_K_M (~5.5GB) - 高质量，16GB+ 内存推荐';
 
   @override
   String get download => '下载';

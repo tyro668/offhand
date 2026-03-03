@@ -132,7 +132,10 @@ class MeetingSegment {
   }) {
     final normalized = normalizeSpeakerId(speakerId);
     if (normalized == null) return '';
-    final indexMatch = RegExp(r'^(?:Speaker)(\d+)$').firstMatch(normalized);
+    final indexMatch = RegExp(
+      r'^(?:speaker|讲话人|s)\s*(\d+)$',
+      caseSensitive: false,
+    ).firstMatch(normalized);
     if (indexMatch == null) return normalized;
     final idx = indexMatch.group(1)!;
     return userFormatter(idx);
@@ -156,7 +159,7 @@ class MeetingSegment {
     ).firstMatch(value);
     if (speakerMatch != null) {
       final idx = speakerMatch.group(1)!;
-      return 'Speaker$idx';
+      return 'speaker$idx';
     }
     return value;
   }

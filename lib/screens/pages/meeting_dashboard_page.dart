@@ -1053,7 +1053,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                l10n.userIdLabel(speaker),
+                speaker,
                 style: TextStyle(
                   fontSize: 11,
                   color: _cs.onSecondaryContainer,

@@ -752,12 +752,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String userLabel(String id) {
-    return 'User$id';
+    return 'speaker$id';
   }
 
   @override
   String userIdLabel(String user) {
-    return 'User ID: $user';
+    return '$user';
   }
 
   @override
@@ -1607,6 +1607,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get localAiQ4Desc =>
       'Qwen2.5 0.5B Q4_K_M (~350MB) - Smaller and faster';
+
+  @override
+  String get localAiQwen35_2BDesc =>
+      'Qwen3.5 2B Q4_K_M (~1.5GB) - Lightweight next-gen, notable quality boost';
+
+  @override
+  String get localAiQwen35_4BDesc =>
+      'Qwen3.5 4B Q4_K_M (~2.7GB) - Recommended, balanced speed and quality';
+
+  @override
+  String get localAiQwen35_9BDesc =>
+      'Qwen3.5 9B Q4_K_M (~5.5GB) - High quality, 16GB+ RAM recommended';
 
   @override
   String get download => 'Download';

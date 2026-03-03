@@ -1467,13 +1467,13 @@ abstract class AppLocalizations {
   /// No description provided for @userLabel.
   ///
   /// In en, this message translates to:
-  /// **'User{id}'**
+  /// **'speaker{id}'**
   String userLabel(String id);
 
   /// No description provided for @userIdLabel.
   ///
   /// In en, this message translates to:
-  /// **'User ID: {user}'**
+  /// **'{user}'**
   String userIdLabel(String user);
 
   /// No description provided for @dashboard.
@@ -3041,6 +3041,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Qwen2.5 0.5B Q4_K_M (~350MB) - Smaller and faster'**
   String get localAiQ4Desc;
+
+  /// No description provided for @localAiQwen35_2BDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Qwen3.5 2B Q4_K_M (~1.5GB) - Lightweight next-gen, notable quality boost'**
+  String get localAiQwen35_2BDesc;
+
+  /// No description provided for @localAiQwen35_4BDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Qwen3.5 4B Q4_K_M (~2.7GB) - Recommended, balanced speed and quality'**
+  String get localAiQwen35_4BDesc;
+
+  /// No description provided for @localAiQwen35_9BDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Qwen3.5 9B Q4_K_M (~5.5GB) - High quality, 16GB+ RAM recommended'**
+  String get localAiQwen35_9BDesc;
 
   /// No description provided for @download.
   ///
