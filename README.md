@@ -4,6 +4,8 @@
 
 Speak freely, write unbound.
 
+Offhand is a privacy-first voice-to-text input app, with support for high-performance local models so sensitive audio can stay on your device.
+
 Offhand is a voice-to-text input application. After you configure a speech recognition model, it can convert your voice into text and automatically insert the result at the current cursor position of the active application.
 
 ## Run in debug mode
