@@ -100,15 +100,18 @@
       "models": [
         {
           "id": "GLM-4.7",
-          "description": "GLM-4.7"
+          "description": "GLM-4.7",
+          "supportsVision": true
         },
         {
           "id": "GLM-4.7-FlashX",
-          "description": "GLM-4.7-FlashX"
+          "description": "GLM-4.7-FlashX",
+          "supportsVision": true
         },
         {
           "id": "GLM-5",
-          "description": "GLM-5"
+          "description": "GLM-5",
+          "supportsVision": true
         }
       ]
     },
@@ -126,19 +129,32 @@
     {
       "name": "Aliyun",
       "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      "defaultModel": "qwen-plus",
+      "defaultModel": "qwen3.5-plus",
       "models": [
         {
+          "id": "qwen3.5-plus",
+          "description": "千问3.5 Plus",
+          "supportsVision": true
+        },
+        {
+          "id": "qwen3.5-flash",
+          "description": "千问3.5 Flash",
+          "supportsVision": true
+        },
+        {
           "id": "qwen-plus",
-          "description": "千问 Plus"
+          "description": "千问 Plus",
+          "supportsVision": true
         },
         {
           "id": "qwen-max",
-          "description": "千问 Max"
+          "description": "千问 Max",
+          "supportsVision": true
         },
         {
           "id": "qwen-flash",
-          "description": "千问 Flash"
+          "description": "千问 Flash",
+          "supportsVision": true
         }
       ]
     },
@@ -149,19 +165,23 @@
       "models": [
         {
           "id": "gpt-5",
-          "description": "GPT-5"
+          "description": "GPT-5",
+          "supportsVision": true
         },
         {
           "id": "gpt-5-mini",
-          "description": "GPT-5 mini"
+          "description": "GPT-5 mini",
+          "supportsVision": true
         },
         {
           "id": "gpt-5-nano",
-          "description": "GPT-5 nano"
+          "description": "GPT-5 nano",
+          "supportsVision": true
         },
         {
           "id": "gpt-4.1",
-          "description": "GPT-4.1"
+          "description": "GPT-4.1",
+          "supportsVision": true
         }
       ]
     },
@@ -172,19 +192,23 @@
       "models": [
         {
           "id": "gemini-3.0-pro",
-          "description": "Gemini 3.0 Pro"
+          "description": "Gemini 3.0 Pro",
+          "supportsVision": true
         },
         {
           "id": "gemini-3.0-flash",
-          "description": "Gemini 3.0 Flash"
+          "description": "Gemini 3.0 Flash",
+          "supportsVision": true
         },
         {
           "id": "gemini-2.5-pro",
-          "description": "Gemini 2.5 Pro"
+          "description": "Gemini 2.5 Pro",
+          "supportsVision": true
         },
         {
           "id": "gemini-2.5-flash",
-          "description": "Gemini 2.5 Flash"
+          "description": "Gemini 2.5 Flash",
+          "supportsVision": true
         }
       ]
     },
