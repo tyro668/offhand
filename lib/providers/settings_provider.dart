@@ -37,6 +37,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _configKey = 'stt_provider_config';
   static const _hotkeyKey = 'hotkey';
   static const _meetingHotkeyKey = 'meeting_hotkey';
+  static const _meetingHotkeyModifiersKey = 'meeting_hotkey_modifiers';
   static const _activationModeKey = 'activation_mode';
   static const _aiEnhanceEnabledKey = 'ai_enhance_enabled';
   static const _aiEnhanceConfigKey = 'ai_enhance_config';
@@ -96,15 +97,20 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   static LogicalKeyboardKey get defaultMeetingHotkey {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      return LogicalKeyboardKey.f3;
-    }
-    return LogicalKeyboardKey.f2;
+    return LogicalKeyboardKey.keyM;
   }
+
+  static const int meetingHotkeyModifierCtrl = 1 << 0;
+  static const int meetingHotkeyModifierAlt = 1 << 1;
+  static const int meetingHotkeyModifierShift = 1 << 2;
+  static const int meetingHotkeyModifierMeta = 1 << 3;
+
+  static int get defaultMeetingHotkeyModifiers => meetingHotkeyModifierCtrl;
 
   // 快捷键配置
   LogicalKeyboardKey _hotkey = defaultHotkey;
   LogicalKeyboardKey _meetingHotkey = defaultMeetingHotkey;
+  int _meetingHotkeyModifiers = defaultMeetingHotkeyModifiers;
   ActivationMode _activationMode = ActivationMode.tapToTalk;
 
   /// 每个服务商独立存储的 API Key（按 name 索引）
@@ -160,6 +166,7 @@ class SettingsProvider extends ChangeNotifier {
   List<AiVendorPreset> get aiPresets => _aiPresets;
   LogicalKeyboardKey get hotkey => _hotkey;
   LogicalKeyboardKey get meetingHotkey => _meetingHotkey;
+  int get meetingHotkeyModifiers => _meetingHotkeyModifiers;
   ActivationMode get activationMode => _activationMode;
   bool get aiEnhanceEnabled => _aiEnhanceEnabled;
   AiEnhanceConfig get aiEnhanceConfig => _aiEnhanceConfig;
@@ -353,10 +360,22 @@ class SettingsProvider extends ChangeNotifier {
     if (meetingHotkeyStr != null) {
       _meetingHotkey = LogicalKeyboardKey(int.parse(meetingHotkeyStr));
     }
-    if (defaultTargetPlatform == TargetPlatform.windows &&
-        _meetingHotkey == LogicalKeyboardKey.fn) {
-      _meetingHotkey = LogicalKeyboardKey.f3;
+    final meetingHotkeyModifiersStr = await db.getSetting(
+      _meetingHotkeyModifiersKey,
+    );
+    if (meetingHotkeyModifiersStr != null) {
+      _meetingHotkeyModifiers =
+          int.tryParse(meetingHotkeyModifiersStr) ??
+          defaultMeetingHotkeyModifiers;
+    }
+    if (_meetingHotkey == LogicalKeyboardKey.fn) {
+      _meetingHotkey = defaultMeetingHotkey;
+      _meetingHotkeyModifiers = defaultMeetingHotkeyModifiers;
       await _saveSetting(_meetingHotkeyKey, _meetingHotkey.keyId.toString());
+      await _saveSetting(
+        _meetingHotkeyModifiersKey,
+        _meetingHotkeyModifiers.toString(),
+      );
     }
 
     // 加载激活模式
@@ -734,16 +753,83 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setMeetingHotkey(LogicalKeyboardKey key) async {
+  Future<void> setMeetingHotkey(
+    LogicalKeyboardKey key, {
+    int? modifiers,
+  }) async {
     _meetingHotkey = key;
+    _meetingHotkeyModifiers = modifiers ?? _meetingHotkeyModifiers;
     await _saveSetting(_meetingHotkeyKey, key.keyId.toString());
+    await _saveSetting(
+      _meetingHotkeyModifiersKey,
+      _meetingHotkeyModifiers.toString(),
+    );
     notifyListeners();
   }
 
   Future<void> resetMeetingHotkey() async {
     _meetingHotkey = defaultMeetingHotkey;
+    _meetingHotkeyModifiers = defaultMeetingHotkeyModifiers;
     await AppDatabase.instance.removeSetting(_meetingHotkeyKey);
+    await AppDatabase.instance.removeSetting(_meetingHotkeyModifiersKey);
     notifyListeners();
+  }
+
+  static bool isModifierKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.control ||
+        key == LogicalKeyboardKey.controlLeft ||
+        key == LogicalKeyboardKey.controlRight ||
+        key == LogicalKeyboardKey.shift ||
+        key == LogicalKeyboardKey.shiftLeft ||
+        key == LogicalKeyboardKey.shiftRight ||
+        key == LogicalKeyboardKey.alt ||
+        key == LogicalKeyboardKey.altLeft ||
+        key == LogicalKeyboardKey.altRight ||
+        key == LogicalKeyboardKey.meta ||
+        key == LogicalKeyboardKey.metaLeft ||
+        key == LogicalKeyboardKey.metaRight;
+  }
+
+  static int meetingModifiersFromPressedKeys(Set<LogicalKeyboardKey> pressed) {
+    var value = 0;
+    if (pressed.contains(LogicalKeyboardKey.controlLeft) ||
+        pressed.contains(LogicalKeyboardKey.controlRight) ||
+        pressed.contains(LogicalKeyboardKey.control)) {
+      value |= meetingHotkeyModifierCtrl;
+    }
+    if (pressed.contains(LogicalKeyboardKey.altLeft) ||
+        pressed.contains(LogicalKeyboardKey.altRight) ||
+        pressed.contains(LogicalKeyboardKey.alt)) {
+      value |= meetingHotkeyModifierAlt;
+    }
+    if (pressed.contains(LogicalKeyboardKey.shiftLeft) ||
+        pressed.contains(LogicalKeyboardKey.shiftRight) ||
+        pressed.contains(LogicalKeyboardKey.shift)) {
+      value |= meetingHotkeyModifierShift;
+    }
+    if (pressed.contains(LogicalKeyboardKey.metaLeft) ||
+        pressed.contains(LogicalKeyboardKey.metaRight) ||
+        pressed.contains(LogicalKeyboardKey.meta)) {
+      value |= meetingHotkeyModifierMeta;
+    }
+    return value;
+  }
+
+  static String meetingModifierLabel(int modifiers) {
+    final parts = <String>[];
+    if ((modifiers & meetingHotkeyModifierCtrl) != 0) {
+      parts.add('Ctrl');
+    }
+    if ((modifiers & meetingHotkeyModifierAlt) != 0) {
+      parts.add('Alt');
+    }
+    if ((modifiers & meetingHotkeyModifierShift) != 0) {
+      parts.add('Shift');
+    }
+    if ((modifiers & meetingHotkeyModifierMeta) != 0) {
+      parts.add(defaultTargetPlatform == TargetPlatform.macOS ? 'Cmd' : 'Win');
+    }
+    return parts.join('+');
   }
 
   /// 设置激活模式
@@ -983,9 +1069,17 @@ class SettingsProvider extends ChangeNotifier {
 
   /// 获取会议快捷键的显示名称
   String get meetingHotkeyLabel {
-    return _meetingHotkey.keyLabel.isNotEmpty
+    final keyLabel = _meetingHotkey.keyLabel.isNotEmpty
         ? _meetingHotkey.keyLabel
         : _meetingHotkey.debugName ?? 'Unknown';
+    if (_meetingHotkeyModifiers == 0) {
+      return keyLabel;
+    }
+    final modifierLabel = meetingModifierLabel(_meetingHotkeyModifiers);
+    if (modifierLabel.isEmpty) {
+      return keyLabel;
+    }
+    return '$modifierLabel+$keyLabel';
   }
 
   /// 设置语言

@@ -42,7 +42,7 @@ class FlutterWindow : public Win32Window {
 
     bool RegisterGlobalHotkey(int key_code);
     void UnregisterGlobalHotkey();
-    bool RegisterMeetingHotkey(int key_code);
+    bool RegisterMeetingHotkey(int key_code, int modifiers);
     void UnregisterMeetingHotkey();
     void EnsureKeyboardHook();
     void RemoveKeyboardHookIfUnused();
@@ -85,6 +85,7 @@ class FlutterWindow : public Win32Window {
     bool hotkey_is_down_ = false;
 
     int meeting_hotkey_key_code_ = VK_F3;
+    int meeting_hotkey_modifiers_ = 0;
     bool meeting_hotkey_enabled_ = false;
     bool meeting_hotkey_is_down_ = false;
 

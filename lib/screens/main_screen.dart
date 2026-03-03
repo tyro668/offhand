@@ -22,6 +22,7 @@ import 'settings_screen.dart';
 /// macOS keyCode 到 Flutter LogicalKeyboardKey 的映射
 const _macKeyCodeMap = <int, LogicalKeyboardKey>{
   63: LogicalKeyboardKey.fn,
+  46: LogicalKeyboardKey.keyM,
   120: LogicalKeyboardKey.f2,
   99: LogicalKeyboardKey.f3,
   118: LogicalKeyboardKey.f4,
@@ -41,6 +42,7 @@ const _macKeyCodeMap = <int, LogicalKeyboardKey>{
 
 /// Windows Virtual-Key 到 Flutter LogicalKeyboardKey 的映射
 const _windowsKeyCodeMap = <int, LogicalKeyboardKey>{
+  0x4D: LogicalKeyboardKey.keyM,
   0x71: LogicalKeyboardKey.f2,
   0x72: LogicalKeyboardKey.f3,
   0x73: LogicalKeyboardKey.f4,
@@ -100,6 +102,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _homePermissionsChecked = false;
   LogicalKeyboardKey? _lastRegisteredHotkey;
   LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
+  int? _lastRegisteredMeetingHotkeyModifiers;
   bool _fnTapToTalkPressCandidate = false;
 
   /// 主导航项（首页 / 词典 / 历史记录 / 会议记录）
@@ -195,16 +198,65 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _registerMeetingHotkey(SettingsProvider settings) {
-    if (settings.meetingHotkey == _lastRegisteredMeetingHotkey) return;
+    if (settings.meetingHotkey == _lastRegisteredMeetingHotkey &&
+        settings.meetingHotkeyModifiers ==
+            _lastRegisteredMeetingHotkeyModifiers) {
+      return;
+    }
     _lastRegisteredMeetingHotkey = settings.meetingHotkey;
+    _lastRegisteredMeetingHotkeyModifiers = settings.meetingHotkeyModifiers;
 
     final keyCode = _platformKeyCodeFor(settings.meetingHotkey);
     if (keyCode == null) return;
 
-    LogService.info('HOTKEY', 'registering meeting hotkey keyCode=$keyCode');
-    OverlayService.registerMeetingHotkey(keyCode: keyCode).then((ok) {
+    final modifiers = _platformHotkeyModifiersFor(
+      settings.meetingHotkeyModifiers,
+    );
+
+    LogService.info(
+      'HOTKEY',
+      'registering meeting hotkey keyCode=$keyCode modifiers=$modifiers',
+    );
+    OverlayService.registerMeetingHotkey(
+      keyCode: keyCode,
+      modifiers: modifiers,
+    ).then((ok) {
       LogService.info('HOTKEY', 'registerMeetingHotkey result=$ok');
     });
+  }
+
+  int _platformHotkeyModifiersFor(int modifiersMask) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      var modifiers = 0;
+      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierCtrl) != 0) {
+        modifiers |= 0x0002;
+      }
+      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierAlt) != 0) {
+        modifiers |= 0x0001;
+      }
+      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierShift) != 0) {
+        modifiers |= 0x0004;
+      }
+      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierMeta) != 0) {
+        modifiers |= 0x0008;
+      }
+      return modifiers;
+    }
+
+    var modifiers = 0;
+    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierCtrl) != 0) {
+      modifiers |= 1 << 12;
+    }
+    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierAlt) != 0) {
+      modifiers |= 1 << 11;
+    }
+    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierShift) != 0) {
+      modifiers |= 1 << 9;
+    }
+    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierMeta) != 0) {
+      modifiers |= 1 << 8;
+    }
+    return modifiers;
   }
 
   bool _hasValidSttModel(SettingsProvider settings) {
@@ -307,18 +359,22 @@ class _MainScreenState extends State<MainScreen> {
   ) {
     if (isRepeat) return;
 
-    // 单键快捷键：有修饰键（Cmd/Ctrl/Alt/Shift）按下时忽略
-    if (hasModifiers) return;
-
     final settings = context.read<SettingsProvider>();
     final key = _platformKeyFromCode(keyCode);
     if (key == null) return;
 
     // 会议快捷键处理
     if (key == settings.meetingHotkey) {
+      final hasMeetingModifiers = settings.meetingHotkeyModifiers != 0;
+      if (hasMeetingModifiers != hasModifiers) {
+        return;
+      }
       _handleMeetingHotkey(type, settings);
       return;
     }
+
+    // 单键快捷键：有修饰键（Cmd/Ctrl/Alt/Shift）按下时忽略
+    if (hasModifiers) return;
 
     // 语音输入快捷键处理
     if (key != settings.hotkey) return;

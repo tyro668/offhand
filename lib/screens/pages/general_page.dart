@@ -1509,7 +1509,19 @@ class _MeetingHotkeyCaptureState extends State<_MeetingHotkeyCapture> {
             onKeyEvent: _listening
                 ? (event) {
                     if (event is KeyDownEvent) {
-                      widget.settings.setMeetingHotkey(event.logicalKey);
+                      if (SettingsProvider.isModifierKey(event.logicalKey)) {
+                        return;
+                      }
+                      final pressedKeys =
+                          HardwareKeyboard.instance.logicalKeysPressed;
+                      final modifiers =
+                          SettingsProvider.meetingModifiersFromPressedKeys(
+                            pressedKeys,
+                          );
+                      widget.settings.setMeetingHotkey(
+                        event.logicalKey,
+                        modifiers: modifiers,
+                      );
                       setState(() => _listening = false);
                     }
                   }
@@ -1573,9 +1585,7 @@ class _MeetingHotkeyCaptureState extends State<_MeetingHotkeyCapture> {
           child: TextButton.icon(
             onPressed: () => widget.settings.resetMeetingHotkey(),
             icon: const Icon(Icons.restore, size: 16),
-            label: Text(
-              widget.l10n.resetHotkeyDefault(Platform.isWindows ? 'F3' : 'F2'),
-            ),
+            label: Text(widget.l10n.resetHotkeyDefault('Ctrl+M')),
             style: TextButton.styleFrom(foregroundColor: _cs.onSurfaceVariant),
           ),
         ),

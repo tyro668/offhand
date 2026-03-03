@@ -49,6 +49,27 @@ std::string OverlayStatusText(const std::string& state) {
   return "";
 }
 
+bool IsVirtualKeyPressed(int vk) {
+  return (GetAsyncKeyState(vk) & 0x8000) != 0;
+}
+
+bool MatchHotkeyModifiers(int required_modifiers) {
+  int active_modifiers = 0;
+  if (IsVirtualKeyPressed(VK_CONTROL)) {
+    active_modifiers |= MOD_CONTROL;
+  }
+  if (IsVirtualKeyPressed(VK_MENU)) {
+    active_modifiers |= MOD_ALT;
+  }
+  if (IsVirtualKeyPressed(VK_SHIFT)) {
+    active_modifiers |= MOD_SHIFT;
+  }
+  if (IsVirtualKeyPressed(VK_LWIN) || IsVirtualKeyPressed(VK_RWIN)) {
+    active_modifiers |= MOD_WIN;
+  }
+  return active_modifiers == required_modifiers;
+}
+
 template <typename T>
 std::optional<T> GetMapValue(const flutter::EncodableMap& map,
                              const std::string& key) {
@@ -277,6 +298,7 @@ void FlutterWindow::HandleMethodCall(
 
   if (method == "registerMeetingHotkey") {
     int key_code = VK_F3;
+    int modifiers = 0;
     if (args != nullptr) {
       if (const auto key32 = GetMapValue<int32_t>(*args, "keyCode");
           key32.has_value()) {
@@ -285,8 +307,17 @@ void FlutterWindow::HandleMethodCall(
                  key64.has_value()) {
         key_code = static_cast<int>(*key64);
       }
+
+      if (const auto modifiers32 = GetMapValue<int32_t>(*args, "modifiers");
+          modifiers32.has_value()) {
+        modifiers = *modifiers32;
+      } else if (const auto modifiers64 =
+                     GetMapValue<int64_t>(*args, "modifiers");
+                 modifiers64.has_value()) {
+        modifiers = static_cast<int>(*modifiers64);
+      }
     }
-    const bool ok = RegisterMeetingHotkey(key_code);
+    const bool ok = RegisterMeetingHotkey(key_code, modifiers);
     result->Success(flutter::EncodableValue(ok));
     return;
   }
@@ -388,8 +419,9 @@ void FlutterWindow::UnregisterGlobalHotkey() {
   RemoveKeyboardHookIfUnused();
 }
 
-bool FlutterWindow::RegisterMeetingHotkey(int key_code) {
+bool FlutterWindow::RegisterMeetingHotkey(int key_code, int modifiers) {
   meeting_hotkey_key_code_ = key_code;
+  meeting_hotkey_modifiers_ = modifiers;
   meeting_hotkey_is_down_ = false;
   meeting_hotkey_enabled_ = true;
   EnsureKeyboardHook();
@@ -438,7 +470,8 @@ LRESULT CALLBACK FlutterWindow::LowLevelKeyboardProc(int n_code, WPARAM wparam,
 
       // Check meeting hotkey
       if (instance_->meeting_hotkey_enabled_ &&
-          vk == static_cast<DWORD>(instance_->meeting_hotkey_key_code_)) {
+          vk == static_cast<DWORD>(instance_->meeting_hotkey_key_code_) &&
+          MatchHotkeyModifiers(instance_->meeting_hotkey_modifiers_)) {
         const bool is_repeat = is_key_down && instance_->meeting_hotkey_is_down_;
         instance_->meeting_hotkey_is_down_ = is_key_down;
         instance_->EmitGlobalKeyEvent(
