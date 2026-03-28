@@ -1,3 +1,4 @@
+import '../../models/stt_request_context.dart';
 import '../log_service.dart';
 import '../whisper_cpp_service.dart';
 import 'stt_provider.dart';
@@ -9,7 +10,10 @@ class WhisperCppSttProvider extends SttProvider {
   WhisperCppSttProvider(super.config);
 
   @override
-  Future<String> transcribe(String audioPath) async {
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  }) async {
     await LogService.info(
       'STT',
       'start whisper.cpp transcribe exec=${config.baseUrl} model=${config.model} file=$audioPath',
@@ -19,7 +23,7 @@ class WhisperCppSttProvider extends SttProvider {
       modelPath: config.model,
     );
     try {
-      return await service.transcribe(audioPath);
+      return await service.transcribe(audioPath, prompt: context?.prompt);
     } on WhisperCppException catch (e) {
       throw SttException(e.message);
     }

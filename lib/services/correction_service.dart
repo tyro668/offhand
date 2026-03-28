@@ -191,12 +191,14 @@ class CorrectionService {
       );
 
       if (correctedText != rawSttText) {
-        await CorrectionChangeLogService.instance.recordChange(
-          source: 'realtime',
-          inputText: rawSttText,
-          outputText: correctedText,
-          terms: _buildTermPairsFromHits(selectedHits),
-        );
+        try {
+          await CorrectionChangeLogService.instance.recordChange(
+            source: 'realtime',
+            inputText: rawSttText,
+            outputText: correctedText,
+            terms: _buildTermPairsFromHits(selectedHits),
+          );
+        } catch (_) {}
       }
 
       return CorrectionResult(
@@ -303,12 +305,14 @@ class CorrectionService {
       );
 
       if (correctedText != paragraphText) {
-        await CorrectionChangeLogService.instance.recordChange(
-          source: 'retrospective',
-          inputText: paragraphText,
-          outputText: correctedText,
-          terms: _buildTermPairsFromHits(selectedHits),
-        );
+        try {
+          await CorrectionChangeLogService.instance.recordChange(
+            source: 'retrospective',
+            inputText: paragraphText,
+            outputText: correctedText,
+            terms: _buildTermPairsFromHits(selectedHits),
+          );
+        } catch (_) {}
       }
 
       await _recordRetroSafely(
@@ -429,35 +433,58 @@ class CorrectionService {
     var output = text;
     for (final hit in hits) {
       final entry = hit.entry;
-      if (!_isChineseToLatinAlias(entry)) continue;
       final alias = entry.corrected?.trim() ?? '';
-      final target = entry.original.trim();
-      if (alias.isEmpty || target.isEmpty) continue;
-
+      final original = entry.original.trim();
       final observed = hit.observedText.trim();
-      if (observed.isNotEmpty &&
-          observed != target &&
-          _containsChinese(observed)) {
-        output = output.replaceAll(observed, target);
+
+      if (_isChineseToLatinAlias(entry)) {
+        final target = original;
+        if (alias.isEmpty || target.isEmpty) continue;
+
+        if (observed.isNotEmpty &&
+            observed != target &&
+            _containsChinese(observed)) {
+          output = output.replaceAll(observed, target);
+        }
+
+        output = output.replaceAll(
+          RegExp(RegExp.escape(alias), caseSensitive: false),
+          target,
+        );
+
+        final pinyin = PinyinMatcher.computePinyin(target);
+        if (pinyin.isNotEmpty) {
+          final syllables = pinyin
+              .split(RegExp(r'\s+'))
+              .where((s) => s.isNotEmpty)
+              .toList(growable: false);
+          if (syllables.isNotEmpty) {
+            final pattern = RegExp(
+              '\\b${syllables.map(RegExp.escape).join(r'[\\s_-]*')}\\b',
+              caseSensitive: false,
+            );
+            output = output.replaceAll(pattern, target);
+          }
+        }
+        continue;
       }
 
-      output = output.replaceAll(
-        RegExp(RegExp.escape(alias), caseSensitive: false),
-        target,
-      );
-
-      final pinyin = PinyinMatcher.computePinyin(target);
-      if (pinyin.isNotEmpty) {
-        final syllables = pinyin
-            .split(RegExp(r'\s+'))
-            .where((s) => s.isNotEmpty)
-            .toList(growable: false);
-        if (syllables.isNotEmpty) {
-          final pattern = RegExp(
-            '\\b${syllables.map(RegExp.escape).join(r'[\\s_-]*')}\\b',
-            caseSensitive: false,
+      // Also normalize latin/romanized aliases back to canonical Chinese
+      // when the selected hit already proves they should collapse.
+      if (entry.type == DictionaryEntryType.correction &&
+          alias.isNotEmpty &&
+          _containsChinese(alias) &&
+          observed.isNotEmpty &&
+          !_containsChinese(observed)) {
+        output = output.replaceAll(
+          RegExp(RegExp.escape(observed), caseSensitive: false),
+          alias,
+        );
+        if (original.isNotEmpty && !_containsChinese(original)) {
+          output = output.replaceAll(
+            RegExp(RegExp.escape(original), caseSensitive: false),
+            alias,
           );
-          output = output.replaceAll(pattern, target);
         }
       }
     }
@@ -549,8 +576,16 @@ class CorrectionService {
       final s = _normalizedSimilarity(observedPinyin, correctedPinyin);
       if (s > bestPinyinSimilarity) bestPinyinSimilarity = s;
     }
+    if (observed.isNotEmpty &&
+        entry.hasPinyinPattern &&
+        _containsChinese(observed)) {
+      final observedPinyin = PinyinMatcher.computePinyin(observed);
+      final s = _normalizedSimilarity(observedPinyin, entry.pinyinNormalized);
+      if (s > bestPinyinSimilarity) bestPinyinSimilarity = s;
+    }
 
     final typeBonus = entry.type == DictionaryEntryType.correction ? 0.05 : 0.0;
+    final patternBonus = entry.hasPinyinPattern ? 0.18 : 0.0;
     final matchTypeBonus = switch (hit.matchType) {
       PinyinMatchType.pinyinExact => 0.12,
       PinyinMatchType.pinyinFuzzy => 0.06,
@@ -560,6 +595,7 @@ class CorrectionService {
         bestCharSimilarity * 0.55 +
         bestPinyinSimilarity * 0.45 +
         typeBonus +
+        patternBonus +
         matchTypeBonus;
     return combined > 1.0 ? 1.0 : combined;
   }

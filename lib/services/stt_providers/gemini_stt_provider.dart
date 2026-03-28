@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../../models/stt_request_context.dart';
 import '../log_service.dart';
 import '../network_client_service.dart';
 import 'stt_provider.dart';
@@ -14,6 +15,12 @@ import 'stt_provider.dart';
 /// 音频编码方式：纯 base64 + format 字段分离，含 text prompt。
 class GeminiSttProvider extends SttProvider {
   GeminiSttProvider(super.config);
+
+  @override
+  SttProviderCapabilities get capabilities => const SttProviderCapabilities(
+    supportsPrompt: true,
+    supportsPreferredTerms: true,
+  );
 
   static const String _fallbackSttModel = 'gemini-2.5-flash';
 
@@ -42,7 +49,10 @@ class GeminiSttProvider extends SttProvider {
   }
 
   @override
-  Future<String> transcribe(String audioPath) async {
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  }) async {
     final requestedModel = config.model.trim();
     final model = _resolveGeminiSttModel(requestedModel);
     await LogService.info(
@@ -63,6 +73,10 @@ class GeminiSttProvider extends SttProvider {
     final base64Audio = base64Encode(bytes);
     final audioFormat = detectAudioFormat(audioPath);
 
+    final instruction = (context?.prompt ?? '').trim().isNotEmpty
+        ? context!.prompt!.trim()
+        : '请将这段音频准确转写为纯文本，仅返回转写结果。';
+
     final headers = buildHeaders();
     final client = NetworkClientService.createClient();
     try {
@@ -73,7 +87,7 @@ class GeminiSttProvider extends SttProvider {
             {
               'role': 'user',
               'content': [
-                {'type': 'text', 'text': '请将这段音频准确转写为纯文本，仅返回转写结果。'},
+                {'type': 'text', 'text': instruction},
                 {
                   'type': 'input_audio',
                   'input_audio': {'data': base64Audio, 'format': audioFormat},

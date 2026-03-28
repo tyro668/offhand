@@ -147,5 +147,18 @@ void main() {
 
       expect(entry.pinyinNormalized, 'le pu');
     });
+
+    test('parses markdown import source', () {
+      final json = {
+        'id': 'test-id',
+        'original': 'DeepSeek',
+        'source': 'markdownImport',
+        'enabled': true,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+
+      final restored = DictionaryEntry.fromJson(json);
+      expect(restored.source, DictionaryEntrySource.markdownImport);
+    });
   });
 }

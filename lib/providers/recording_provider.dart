@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
+import '../models/dictionary_entry.dart';
+import '../models/stt_request_context.dart';
+import '../models/term_context_entry.dart';
 import '../models/transcription.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/provider_config.dart';
@@ -21,6 +24,7 @@ import '../services/pinyin_matcher.dart';
 import '../services/session_glossary.dart';
 import '../services/correction_stats_service.dart';
 import '../services/context_recall_service.dart';
+import '../services/term_prompt_builder.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
@@ -66,6 +70,9 @@ class RecordingProvider extends ChangeNotifier {
   static const ContextRecallService _contextRecallService =
       ContextRecallService();
   bool _retrospectiveCorrectionEnabled = false;
+  List<DictionaryEntry> _dictionaryEntries = const [];
+  List<TermContextEntry> _termContextEntries = const [];
+  final TermPromptBuilder _termPromptBuilder = const TermPromptBuilder();
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
   String _transcribingLabel = 'Transcribing';
@@ -85,9 +92,13 @@ class RecordingProvider extends ChangeNotifier {
     required PinyinMatcher matcher,
     required AiEnhanceConfig aiConfig,
     required String correctionPrompt,
+    List<DictionaryEntry> dictionaryEntries = const [],
+    List<TermContextEntry> termContextEntries = const [],
     int maxReferenceEntries = 15,
     double minCandidateScore = 0.30,
   }) {
+    _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
+    _termContextEntries = List<TermContextEntry>.from(termContextEntries);
     _correctionService = CorrectionService(
       matcher: matcher,
       context: _correctionContext,
@@ -102,6 +113,8 @@ class RecordingProvider extends ChangeNotifier {
   /// 禁用纠错服务。
   void disableCorrectionService() {
     _correctionService = null;
+    _dictionaryEntries = const [];
+    _termContextEntries = const [];
   }
 
   /// 设置终态回溯纠错开关。
@@ -369,7 +382,13 @@ class RecordingProvider extends ChangeNotifier {
           continue;
         }
         try {
-          var text = await SttService(config).transcribe(path);
+          final sttContext = _buildSttRequestContext(
+            scene: 'dictation',
+            currentText: _realtimeTextBuffer.toString(),
+          );
+          var text = await SttService(
+            config,
+          ).transcribe(path, context: sttContext);
           // 纠错：若已配置 CorrectionService，对 STT 结果做拼音匹配 + LLM 纠错
           if (sessionId == _sessionId &&
               _correctionService != null &&
@@ -399,6 +418,27 @@ class RecordingProvider extends ChangeNotifier {
         _segmentDrainCompleter = null;
       }
     }
+  }
+
+  SttRequestContext? _buildSttRequestContext({
+    required String scene,
+    required String currentText,
+  }) {
+    final bundle = _termPromptBuilder.build(
+      scene: scene,
+      currentText: currentText,
+      history: _history,
+      dictionaryEntries: _dictionaryEntries,
+      sessionGlossary: _sessionGlossary,
+      termContextEntries: _termContextEntries,
+    );
+    if (!bundle.hasPrompt) return null;
+    return SttRequestContext(
+      scene: scene,
+      prompt: bundle.sttPrompt,
+      preferredTerms: bundle.preferredTerms,
+      preserveTerms: bundle.preserveTerms,
+    );
   }
 
   void _appendRealtimeText(String text) {

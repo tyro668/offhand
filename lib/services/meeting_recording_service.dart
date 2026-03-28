@@ -4,8 +4,11 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/meeting.dart';
 import '../models/merged_note.dart';
+import '../models/dictionary_entry.dart';
 import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
+import '../models/stt_request_context.dart';
+import '../models/term_context_entry.dart';
 import 'audio_recorder.dart';
 import 'stt_service.dart';
 import 'ai_enhance_service.dart';
@@ -19,6 +22,7 @@ import 'pinyin_matcher.dart';
 import 'vad_service.dart';
 import 'correction_stats_service.dart';
 import 'incremental_summary_service.dart';
+import 'term_prompt_builder.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
 class MeetingRecordingService {
@@ -129,6 +133,9 @@ class MeetingRecordingService {
   SttProviderConfig? _sttConfig;
   AiEnhanceConfig? _aiConfig;
   bool _aiEnhanceEnabled = false;
+  List<DictionaryEntry> _dictionaryEntries = const [];
+  List<TermContextEntry> _termContextEntries = const [];
+  final TermPromptBuilder _termPromptBuilder = const TermPromptBuilder();
 
   /// 滑动窗口合并器
   SlidingWindowMerger? _merger;
@@ -173,6 +180,8 @@ class MeetingRecordingService {
     bool aiEnhanceEnabled = false,
     int? segmentSeconds,
     int windowSize = 5,
+    List<DictionaryEntry> dictionaryEntries = const [],
+    List<TermContextEntry> termContextEntries = const [],
     PinyinMatcher? pinyinMatcher,
     String? correctionPrompt,
     int maxReferenceEntries = 15,
@@ -189,6 +198,8 @@ class MeetingRecordingService {
     _sttConfig = sttConfig;
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
+    _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
+    _termContextEntries = List<TermContextEntry>.from(termContextEntries);
 
     // 智能分段参数
     _softMinSeconds = softMinSeconds;
@@ -733,7 +744,11 @@ class MeetingRecordingService {
       }
 
       final sttService = SttService(_sttConfig!);
-      final rawText = await sttService.transcribe(pending.audioPath);
+      final sttContext = _buildSttRequestContext();
+      final rawText = await sttService.transcribe(
+        pending.audioPath,
+        context: sttContext,
+      );
 
       if (rawText.trim().isEmpty) {
         segment.status = SegmentStatus.done;
@@ -815,6 +830,24 @@ class MeetingRecordingService {
         'segment ${segment.segmentIndex} processing failed: $e',
       );
     }
+  }
+
+  SttRequestContext? _buildSttRequestContext() {
+    final bundle = _termPromptBuilder.build(
+      scene: 'meeting',
+      currentText: _merger?.currentFullText ?? '',
+      history: const [],
+      dictionaryEntries: _dictionaryEntries,
+      sessionGlossary: _sessionGlossary,
+      termContextEntries: _termContextEntries,
+    );
+    if (!bundle.hasPrompt) return null;
+    return SttRequestContext(
+      scene: 'meeting',
+      prompt: bundle.sttPrompt,
+      preferredTerms: bundle.preferredTerms,
+      preserveTerms: bundle.preserveTerms,
+    );
   }
 
   /// 等待所有分段处理完成

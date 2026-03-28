@@ -2090,6 +2090,204 @@ abstract class AppLocalizations {
   /// **'Run one more paragraph-level correction when recording stops for better term consistency'**
   String get retrospectiveCorrectionDescription;
 
+  /// No description provided for @textProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Processing'**
+  String get textProcessing;
+
+  /// No description provided for @textProcessingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Control correction and context enhancement after transcription.'**
+  String get textProcessingDescription;
+
+  /// No description provided for @historyContextEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'History Context Enhancement'**
+  String get historyContextEnabled;
+
+  /// No description provided for @historyContextEnabledDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use recent related history to improve continuation and context coherence.'**
+  String get historyContextEnabledDescription;
+
+  /// No description provided for @contextTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Context'**
+  String get contextTab;
+
+  /// No description provided for @contextImportMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Markdown'**
+  String get contextImportMarkdown;
+
+  /// No description provided for @contextSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search terms, aliases, sources'**
+  String get contextSearchHint;
+
+  /// No description provided for @contextEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No context'**
+  String get contextEmpty;
+
+  /// No description provided for @contextCanPromote.
+  ///
+  /// In en, this message translates to:
+  /// **'Promotable'**
+  String get contextCanPromote;
+
+  /// No description provided for @contextPromoteToDictionary.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote'**
+  String get contextPromoteToDictionary;
+
+  /// No description provided for @contextTypeCorrectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction Hint'**
+  String get contextTypeCorrectionHint;
+
+  /// No description provided for @contextTypePreserveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preserve Hint'**
+  String get contextTypePreserveHint;
+
+  /// No description provided for @contextTypeReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get contextTypeReference;
+
+  /// No description provided for @contextImportDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Markdown'**
+  String get contextImportDialogTitle;
+
+  /// No description provided for @contextImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import Markdown'**
+  String get contextImportFailed;
+
+  /// No description provided for @contextImportPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Preview'**
+  String get contextImportPreviewTitle;
+
+  /// No description provided for @contextPromoteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This entry cannot be promoted to the dictionary'**
+  String get contextPromoteUnavailable;
+
+  /// No description provided for @contextCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String contextCount(int count);
+
+  /// No description provided for @contextSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String contextSelectedCount(int count);
+
+  /// No description provided for @contextSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get contextSelectAll;
+
+  /// No description provided for @contextDeleteSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete selected'**
+  String get contextDeleteSelected;
+
+  /// No description provided for @contextDeleteSelectedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} context items'**
+  String contextDeleteSelectedSuccess(int count);
+
+  /// No description provided for @contextContentEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty content'**
+  String get contextContentEmpty;
+
+  /// No description provided for @contextAliasLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Alias / Misheard: {value}'**
+  String contextAliasLabel(String value);
+
+  /// No description provided for @contextSourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: {value}'**
+  String contextSourceLabel(String value);
+
+  /// No description provided for @contextDeleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {term}'**
+  String contextDeleteSuccess(String term);
+
+  /// No description provided for @contextPromoteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Promoted {term} to dictionary'**
+  String contextPromoteSuccess(String term);
+
+  /// No description provided for @contextImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Import complete: context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}'**
+  String contextImportSuccess(
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+  );
+
+  /// No description provided for @contextImportPreviewSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{fileCount} files, context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}, skipped {skippedCount}'**
+  String contextImportPreviewSummary(
+    int fileCount,
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+    int skippedCount,
+  );
+
+  /// No description provided for @contextImportPreviewItemSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}, skipped {skippedCount}'**
+  String contextImportPreviewItemSummary(
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+    int skippedCount,
+  );
+
   /// No description provided for @pinyinPreview.
   ///
   /// In en, this message translates to:

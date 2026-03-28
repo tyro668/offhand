@@ -1,4 +1,5 @@
 import '../models/provider_config.dart';
+import '../models/stt_request_context.dart';
 import 'stt_providers/stt_provider.dart';
 import 'stt_providers/openai_stt_provider.dart';
 import 'stt_providers/zai_stt_provider.dart';
@@ -58,8 +59,11 @@ class SttService {
   }
 
   /// 将音频文件转写为文本。
-  Future<String> transcribe(String audioPath) {
-    return _resolveProvider().transcribe(audioPath);
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  }) {
+    return _resolveProvider().transcribe(audioPath, context: context);
   }
 
   /// 检查服务是否可用（简单版本）。

@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../database/app_database.dart';
+import '../models/dictionary_entry.dart';
 import '../models/meeting.dart';
 import '../models/merged_note.dart';
 import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
+import '../models/term_context_entry.dart';
 import '../services/meeting_recording_service.dart';
 import '../services/meeting_export_service.dart';
 import '../services/ai_enhance_service.dart';
@@ -564,6 +566,8 @@ class MeetingProvider extends ChangeNotifier {
     int? segmentSeconds,
     int windowSize = 5,
     String dictionarySuffix = '',
+    List<DictionaryEntry> dictionaryEntries = const [],
+    List<TermContextEntry> termContextEntries = const [],
     PinyinMatcher? pinyinMatcher,
     String? correctionPrompt,
     int maxReferenceEntries = 15,
@@ -602,6 +606,8 @@ class MeetingProvider extends ChangeNotifier {
         aiEnhanceEnabled: aiEnhanceEnabled,
         segmentSeconds: segmentSeconds,
         windowSize: windowSize,
+        dictionaryEntries: dictionaryEntries,
+        termContextEntries: termContextEntries,
         pinyinMatcher: pinyinMatcher,
         correctionPrompt: correctionPrompt,
         maxReferenceEntries: maxReferenceEntries,

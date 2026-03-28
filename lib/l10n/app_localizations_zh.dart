@@ -1040,6 +1040,134 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retrospectiveCorrectionDescription => '停止录音后对整段文本再纠错一次，提升术语一致性';
 
   @override
+  String get textProcessing => '文本处理';
+
+  @override
+  String get textProcessingDescription => '控制识别后的纠错与上下文增强。';
+
+  @override
+  String get historyContextEnabled => '历史上下文优化';
+
+  @override
+  String get historyContextEnabledDescription => '参考最近相关历史，增强续写和上下文连贯性。';
+
+  @override
+  String get contextTab => '上下文';
+
+  @override
+  String get contextImportMarkdown => '导入 Markdown';
+
+  @override
+  String get contextSearchHint => '搜索术语、别名、来源';
+
+  @override
+  String get contextEmpty => '暂无上下文';
+
+  @override
+  String get contextCanPromote => '可提升为词典';
+
+  @override
+  String get contextPromoteToDictionary => '提升到词典';
+
+  @override
+  String get contextTypeCorrectionHint => '纠错提示';
+
+  @override
+  String get contextTypePreserveHint => '保留提示';
+
+  @override
+  String get contextTypeReference => '参考';
+
+  @override
+  String get contextImportDialogTitle => '导入 Markdown';
+
+  @override
+  String get contextImportFailed => 'Markdown 导入失败';
+
+  @override
+  String get contextImportPreviewTitle => '导入预览';
+
+  @override
+  String get contextPromoteUnavailable => '该条目当前不能提升为词典规则';
+
+  @override
+  String contextCount(int count) {
+    return '共 $count 条';
+  }
+
+  @override
+  String contextSelectedCount(int count) {
+    return '已选 $count 条';
+  }
+
+  @override
+  String get contextSelectAll => '全选';
+
+  @override
+  String get contextDeleteSelected => '批量删除';
+
+  @override
+  String contextDeleteSelectedSuccess(int count) {
+    return '已删除 $count 条上下文';
+  }
+
+  @override
+  String get contextContentEmpty => '内容为空';
+
+  @override
+  String contextAliasLabel(String value) {
+    return '别名/误识别: $value';
+  }
+
+  @override
+  String contextSourceLabel(String value) {
+    return '来源: $value';
+  }
+
+  @override
+  String contextDeleteSuccess(String term) {
+    return '已删除 $term';
+  }
+
+  @override
+  String contextPromoteSuccess(String term) {
+    return '已将 $term 提升到词典';
+  }
+
+  @override
+  String contextImportSuccess(
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+  ) {
+    return '导入完成：上下文 $contextCount 条，纠错 $correctionCount 条，保留 $preserveCount 条，参考 $referenceCount 条';
+  }
+
+  @override
+  String contextImportPreviewSummary(
+    int fileCount,
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+    int skippedCount,
+  ) {
+    return '共 $fileCount 个文件，上下文 $contextCount 条，纠错 $correctionCount 条，保留 $preserveCount 条，参考 $referenceCount 条，跳过 $skippedCount 条';
+  }
+
+  @override
+  String contextImportPreviewItemSummary(
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+    int skippedCount,
+  ) {
+    return '上下文 $contextCount 条，纠错 $correctionCount 条，保留 $preserveCount 条，参考 $referenceCount 条，跳过 $skippedCount 条';
+  }
+
+  @override
   String get pinyinPreview => '拼音';
 
   @override

@@ -268,12 +268,12 @@ class SenseVoiceFfiService {
   }
 
   /// 使用 sherpa-onnx 进行语音转文字
-  Future<String> transcribe(String audioPath) async {
+  Future<String> transcribe(String audioPath, {String? prompt}) async {
     final modelDir = await _resolveModelDir();
 
     await LogService.info(
       'SENSEVOICE',
-      'transcribe (sherpa-onnx) modelDir=$modelDir audio=$audioPath',
+      'transcribe (sherpa-onnx) modelDir=$modelDir audio=$audioPath prompt=${(prompt ?? '').trim().isNotEmpty}',
     );
 
     final modelFile = p.join(modelDir, 'model.int8.onnx');

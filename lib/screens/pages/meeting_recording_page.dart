@@ -86,6 +86,8 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
             aiConfig: widget.aiConfig,
             aiEnhanceEnabled: widget.aiEnhanceEnabled,
             dictionarySuffix: widget.dictionarySuffix,
+            dictionaryEntries: settings.dictionaryEntries,
+            termContextEntries: settings.termContextEntries,
             pinyinMatcher: settings.correctionEffective
                 ? settings.pinyinMatcher
                 : null,

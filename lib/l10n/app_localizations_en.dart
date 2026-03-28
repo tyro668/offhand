@@ -1090,6 +1090,137 @@ class AppLocalizationsEn extends AppLocalizations {
       'Run one more paragraph-level correction when recording stops for better term consistency';
 
   @override
+  String get textProcessing => 'Text Processing';
+
+  @override
+  String get textProcessingDescription =>
+      'Control correction and context enhancement after transcription.';
+
+  @override
+  String get historyContextEnabled => 'History Context Enhancement';
+
+  @override
+  String get historyContextEnabledDescription =>
+      'Use recent related history to improve continuation and context coherence.';
+
+  @override
+  String get contextTab => 'Context';
+
+  @override
+  String get contextImportMarkdown => 'Import Markdown';
+
+  @override
+  String get contextSearchHint => 'Search terms, aliases, sources';
+
+  @override
+  String get contextEmpty => 'No context';
+
+  @override
+  String get contextCanPromote => 'Promotable';
+
+  @override
+  String get contextPromoteToDictionary => 'Promote';
+
+  @override
+  String get contextTypeCorrectionHint => 'Correction Hint';
+
+  @override
+  String get contextTypePreserveHint => 'Preserve Hint';
+
+  @override
+  String get contextTypeReference => 'Reference';
+
+  @override
+  String get contextImportDialogTitle => 'Import Markdown';
+
+  @override
+  String get contextImportFailed => 'Failed to import Markdown';
+
+  @override
+  String get contextImportPreviewTitle => 'Import Preview';
+
+  @override
+  String get contextPromoteUnavailable =>
+      'This entry cannot be promoted to the dictionary';
+
+  @override
+  String contextCount(int count) {
+    return '$count items';
+  }
+
+  @override
+  String contextSelectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get contextSelectAll => 'Select all';
+
+  @override
+  String get contextDeleteSelected => 'Delete selected';
+
+  @override
+  String contextDeleteSelectedSuccess(int count) {
+    return 'Deleted $count context items';
+  }
+
+  @override
+  String get contextContentEmpty => 'Empty content';
+
+  @override
+  String contextAliasLabel(String value) {
+    return 'Alias / Misheard: $value';
+  }
+
+  @override
+  String contextSourceLabel(String value) {
+    return 'Source: $value';
+  }
+
+  @override
+  String contextDeleteSuccess(String term) {
+    return 'Deleted $term';
+  }
+
+  @override
+  String contextPromoteSuccess(String term) {
+    return 'Promoted $term to dictionary';
+  }
+
+  @override
+  String contextImportSuccess(
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+  ) {
+    return 'Import complete: context $contextCount, correction $correctionCount, preserve $preserveCount, reference $referenceCount';
+  }
+
+  @override
+  String contextImportPreviewSummary(
+    int fileCount,
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+    int skippedCount,
+  ) {
+    return '$fileCount files, context $contextCount, correction $correctionCount, preserve $preserveCount, reference $referenceCount, skipped $skippedCount';
+  }
+
+  @override
+  String contextImportPreviewItemSummary(
+    int contextCount,
+    int correctionCount,
+    int preserveCount,
+    int referenceCount,
+    int skippedCount,
+  ) {
+    return 'Context $contextCount, correction $correctionCount, preserve $preserveCount, reference $referenceCount, skipped $skippedCount';
+  }
+
+  @override
   String get pinyinPreview => 'Pinyin';
 
   @override

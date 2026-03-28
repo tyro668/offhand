@@ -449,6 +449,98 @@
   "correctionDescription": "基于拼音匹配自动纠正同音字，仅在词典非空时生效",
   "retrospectiveCorrectionEnabled": "终态回溯复核",
   "retrospectiveCorrectionDescription": "停止录音后对整段文本再纠错一次，提升术语一致性",
+  "textProcessing": "文本处理",
+  "textProcessingDescription": "控制识别后的纠错与上下文增强。",
+  "historyContextEnabled": "历史上下文优化",
+  "historyContextEnabledDescription": "参考最近相关历史，增强续写和上下文连贯性。",
+  "contextTab": "上下文",
+  "contextImportMarkdown": "导入 Markdown",
+  "contextSearchHint": "搜索术语、别名、来源",
+  "contextEmpty": "暂无上下文",
+  "contextCanPromote": "可提升为词典",
+  "contextPromoteToDictionary": "提升到词典",
+  "contextTypeCorrectionHint": "纠错提示",
+  "contextTypePreserveHint": "保留提示",
+  "contextTypeReference": "参考",
+  "contextImportDialogTitle": "导入 Markdown",
+  "contextImportFailed": "Markdown 导入失败",
+  "contextImportPreviewTitle": "导入预览",
+  "contextPromoteUnavailable": "该条目当前不能提升为词典规则",
+  "contextCount": "共 {count} 条",
+  "@contextCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "contextSelectedCount": "已选 {count} 条",
+  "@contextSelectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "contextSelectAll": "全选",
+  "contextDeleteSelected": "批量删除",
+  "contextDeleteSelectedSuccess": "已删除 {count} 条上下文",
+  "@contextDeleteSelectedSuccess": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "contextContentEmpty": "内容为空",
+  "contextAliasLabel": "别名/误识别: {value}",
+  "@contextAliasLabel": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "contextSourceLabel": "来源: {value}",
+  "@contextSourceLabel": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "contextDeleteSuccess": "已删除 {term}",
+  "@contextDeleteSuccess": {
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "contextPromoteSuccess": "已将 {term} 提升到词典",
+  "@contextPromoteSuccess": {
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "contextImportSuccess": "导入完成：上下文 {contextCount} 条，纠错 {correctionCount} 条，保留 {preserveCount} 条，参考 {referenceCount} 条",
+  "@contextImportSuccess": {
+    "placeholders": {
+      "contextCount": {"type": "int"},
+      "correctionCount": {"type": "int"},
+      "preserveCount": {"type": "int"},
+      "referenceCount": {"type": "int"}
+    }
+  },
+  "contextImportPreviewSummary": "共 {fileCount} 个文件，上下文 {contextCount} 条，纠错 {correctionCount} 条，保留 {preserveCount} 条，参考 {referenceCount} 条，跳过 {skippedCount} 条",
+  "@contextImportPreviewSummary": {
+    "placeholders": {
+      "fileCount": {"type": "int"},
+      "contextCount": {"type": "int"},
+      "correctionCount": {"type": "int"},
+      "preserveCount": {"type": "int"},
+      "referenceCount": {"type": "int"},
+      "skippedCount": {"type": "int"}
+    }
+  },
+  "contextImportPreviewItemSummary": "上下文 {contextCount} 条，纠错 {correctionCount} 条，保留 {preserveCount} 条，参考 {referenceCount} 条，跳过 {skippedCount} 条",
+  "@contextImportPreviewItemSummary": {
+    "placeholders": {
+      "contextCount": {"type": "int"},
+      "correctionCount": {"type": "int"},
+      "preserveCount": {"type": "int"},
+      "referenceCount": {"type": "int"},
+      "skippedCount": {"type": "int"}
+    }
+  },
   "pinyinPreview": "拼音",
   "pinyinOverride": "拼音规则（选填）",
   "pinyinOverrideHint": "如 fan ruan，支持仅拼音匹配；空格分隔多音节",

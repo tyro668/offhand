@@ -31,18 +31,24 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadStats({bool showLoading = true}) async {
     if (showLoading) setState(() => _loading = true);
-    final results = await Future.wait([
-      DashboardService.instance.computeStats(granularity: _granularity),
-      CorrectionChangeLogService.instance.getRecent(limit: 20),
-    ]);
-    final stats = results[0] as DashboardStats;
-    final correctionLogs = results[1] as List<CorrectionChangeLog>;
-    if (mounted) {
-      setState(() {
-        _stats = stats;
-        _correctionLogs = correctionLogs;
-        if (showLoading) _loading = false;
-      });
+    try {
+      final results = await Future.wait([
+        DashboardService.instance.computeStats(granularity: _granularity),
+        CorrectionChangeLogService.instance.getRecent(limit: 20),
+      ]);
+      final stats = results[0] as DashboardStats;
+      final correctionLogs = results[1] as List<CorrectionChangeLog>;
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _correctionLogs = correctionLogs;
+          if (showLoading) _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && showLoading) {
+        setState(() => _loading = false);
+      }
     }
   }
 

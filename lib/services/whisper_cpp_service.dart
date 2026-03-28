@@ -219,12 +219,12 @@ class WhisperCppService {
   }
 
   /// 转录音频文件，返回识别文本（通过 FFI 调用 whisper.cpp）
-  Future<String> transcribe(String audioPath) async {
+  Future<String> transcribe(String audioPath, {String? prompt}) async {
     final resolvedModel = await _resolveModelPath();
 
     await LogService.info(
       'WHISPER_CPP',
-      'transcribe (FFI) model=$resolvedModel audio=$audioPath',
+      'transcribe (FFI) model=$resolvedModel audio=$audioPath prompt=${(prompt ?? '').trim().isNotEmpty}',
     );
 
     if (!await File(resolvedModel).exists()) {

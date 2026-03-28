@@ -94,15 +94,15 @@ void main() {
 
       // Rebuild with different data
       final entry2 = DictionaryEntry.create(
-        original: '墨提斯',
-        corrected: 'Metis',
+        original: '星阔',
+        corrected: 'XingKuo',
       );
       matcher.buildIndex([entry2]);
 
       // Old entry should not match
       expect(matcher.findMatches('墨提斯'), isEmpty);
       // New entry should match
-      expect(matcher.findMatches('墨提斯'), hasLength(1));
+      expect(matcher.findMatches('星阔'), hasLength(1));
     });
 
     test('pinyinOverride is used for matching', () {

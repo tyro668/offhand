@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../../models/stt_request_context.dart';
 import '../log_service.dart';
 import '../network_client_service.dart';
 import 'stt_provider.dart';
@@ -14,6 +15,12 @@ import 'stt_provider.dart';
 /// - 模型名需规范化（下划线→连字符）
 class AliyunSttProvider extends SttProvider {
   AliyunSttProvider(super.config);
+
+  @override
+  SttProviderCapabilities get capabilities => const SttProviderCapabilities(
+    supportsPrompt: true,
+    supportsPreferredTerms: true,
+  );
 
   /// 规范化 Aliyun 模型名称。
   String _resolvedModel() {
@@ -30,7 +37,10 @@ class AliyunSttProvider extends SttProvider {
   }
 
   @override
-  Future<String> transcribe(String audioPath) async {
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  }) async {
     final resolvedModel = _resolvedModel();
     await LogService.info(
       'STT',
@@ -52,6 +62,10 @@ class AliyunSttProvider extends SttProvider {
     final base64Audio = base64Encode(bytes);
     final audioFormat = detectAudioFormat(audioPath);
 
+    final instruction = (context?.prompt ?? '').trim().isNotEmpty
+        ? context!.prompt!.trim()
+        : '请将这段音频准确转写为纯文本，仅返回转写结果。';
+
     final headers = buildHeaders();
     final body = json.encode({
       'model': resolvedModel,
@@ -59,6 +73,7 @@ class AliyunSttProvider extends SttProvider {
         {
           'role': 'user',
           'content': [
+            {'type': 'text', 'text': instruction},
             {
               'type': 'input_audio',
               'input_audio': {

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../models/stt_request_context.dart';
 import '../log_service.dart';
 import '../network_client_service.dart';
 import 'stt_provider.dart';
@@ -14,7 +15,16 @@ class OpenAiSttProvider extends SttProvider {
   OpenAiSttProvider(super.config);
 
   @override
-  Future<String> transcribe(String audioPath) async {
+  SttProviderCapabilities get capabilities => const SttProviderCapabilities(
+    supportsPrompt: true,
+    supportsPreferredTerms: true,
+  );
+
+  @override
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  }) async {
     final model = config.model.trim();
     await LogService.info(
       'STT',
@@ -40,6 +50,9 @@ class OpenAiSttProvider extends SttProvider {
 
     request.fields['model'] = model;
     request.fields['response_format'] = 'json';
+    if ((context?.prompt ?? '').trim().isNotEmpty) {
+      request.fields['prompt'] = context!.prompt!.trim();
+    }
 
     request.files.add(await http.MultipartFile.fromPath('file', audioPath));
 

@@ -1,3 +1,4 @@
+import '../../models/stt_request_context.dart';
 import '../log_service.dart';
 import '../sense_voice_ffi_service.dart';
 import 'stt_provider.dart';
@@ -6,7 +7,10 @@ class SenseVoiceSttProvider extends SttProvider {
   SenseVoiceSttProvider(super.config);
 
   @override
-  Future<String> transcribe(String audioPath) async {
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  }) async {
     await LogService.info(
       'STT',
       'start sensevoice transcribe model=${config.model} file=$audioPath',
@@ -14,7 +18,7 @@ class SenseVoiceSttProvider extends SttProvider {
 
     final service = SenseVoiceFfiService(modelPath: config.model);
     try {
-      return await service.transcribe(audioPath);
+      return await service.transcribe(audioPath, prompt: context?.prompt);
     } on SenseVoiceException catch (e) {
       throw SttException(e.message);
     }

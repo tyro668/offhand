@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../models/provider_config.dart';
+import '../../models/stt_request_context.dart';
 import '../log_service.dart';
 import '../network_client_service.dart';
 
@@ -21,6 +22,16 @@ class SttException implements Exception {
   String toString() => message;
 }
 
+class SttProviderCapabilities {
+  final bool supportsPrompt;
+  final bool supportsPreferredTerms;
+
+  const SttProviderCapabilities({
+    this.supportsPrompt = false,
+    this.supportsPreferredTerms = false,
+  });
+}
+
 /// STT Provider 抽象基类。
 ///
 /// 每个厂商实现自己的 [transcribe] 和 [checkAvailabilityDetailed] 方法。
@@ -29,8 +40,13 @@ abstract class SttProvider {
 
   SttProvider(this.config);
 
+  SttProviderCapabilities get capabilities => const SttProviderCapabilities();
+
   /// 将音频文件转写为文本。
-  Future<String> transcribe(String audioPath);
+  Future<String> transcribe(
+    String audioPath, {
+    SttRequestContext? context,
+  });
 
   /// 检查服务是否可用（详细版本）。
   Future<SttConnectionCheckResult> checkAvailabilityDetailed();

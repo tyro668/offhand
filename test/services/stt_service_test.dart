@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voicetype/models/provider_config.dart';
+import 'package:voicetype/models/stt_request_context.dart';
 import 'package:voicetype/services/stt_service.dart';
 
 void main() {
@@ -163,6 +164,42 @@ void main() {
         expect(result, 'Hello world');
       });
 
+      test('passes prompt to OpenAI compatible transcription request', () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        var capturedBody = '';
+        server.listen((req) async {
+          capturedBody = await utf8.decoder.bind(req).join();
+          req.response.statusCode = 200;
+          req.response.write(json.encode({'text': 'Hello world'}));
+          await req.response.close();
+        });
+
+        final config = SttProviderConfig(
+          type: SttProviderType.cloud,
+          name: 'Test',
+          baseUrl: 'http://127.0.0.1:${server.port}/v1',
+          apiKey: 'test-key',
+          model: 'whisper-1',
+        );
+
+        final tempFile = File('${Directory.systemTemp.path}/test_audio_prompt.wav');
+        await tempFile.writeAsBytes([0, 0, 0, 0]);
+        addTearDown(() => tempFile.deleteSync());
+
+        await SttService(config).transcribe(
+          tempFile.path,
+          context: const SttRequestContext(
+            scene: 'dictation',
+            prompt: '优先识别 MCP 和 DeepSeek',
+          ),
+        );
+
+        expect(capturedBody, contains('name="prompt"'));
+        expect(capturedBody, contains('优先识别 MCP 和 DeepSeek'));
+      });
+
       test(
         'aliyun fallback works when /audio/transcriptions returns 500',
         () async {
@@ -260,6 +297,57 @@ void main() {
           () => SttService(config).transcribe(tempFile.path),
           throwsA(isA<SttException>()),
         );
+      });
+
+      test('passes prompt to Gemini compatible request text instruction', () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        String capturedInstruction = '';
+        server.listen((req) async {
+          final body = await utf8.decoder.bind(req).join();
+          final payload = json.decode(body) as Map<String, dynamic>;
+          final messages = payload['messages'] as List<dynamic>;
+          final content =
+              (messages.first as Map<String, dynamic>)['content'] as List<dynamic>;
+          capturedInstruction =
+              (content.first as Map<String, dynamic>)['text'] as String? ?? '';
+          req.response.statusCode = 200;
+          req.response.write(
+            json.encode({
+              'choices': [
+                {
+                  'message': {'content': 'Gemini text'},
+                },
+              ],
+            }),
+          );
+          await req.response.close();
+        });
+
+        final config = SttProviderConfig(
+          type: SttProviderType.cloud,
+          name: 'Gemini',
+          baseUrl:
+              'http://127.0.0.1:${server.port}/generativelanguage.googleapis.com/v1beta',
+          apiKey: 'test-key',
+          model: 'gemini-2.5-flash',
+        );
+
+        final tempFile = File('${Directory.systemTemp.path}/test_audio_gemini.wav');
+        await tempFile.writeAsBytes([0, 0, 0, 0]);
+        addTearDown(() => tempFile.deleteSync());
+
+        final result = await SttService(config).transcribe(
+          tempFile.path,
+          context: const SttRequestContext(
+            scene: 'meeting',
+            prompt: '优先识别 帆软 和 FineBI',
+          ),
+        );
+
+        expect(result, 'Gemini text');
+        expect(capturedInstruction, contains('优先识别 帆软 和 FineBI'));
       });
     });
 

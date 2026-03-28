@@ -9,15 +9,19 @@ import '../models/ai_vendor_preset.dart';
 import '../models/network_settings.dart';
 import '../models/dictionary_entry.dart';
 import '../models/dictation_term_pending_candidate.dart';
+import '../models/imported_reference_term.dart';
+import '../models/markdown_term_import_result.dart';
 import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
 import '../models/scene_mode.dart';
 import '../models/stt_model_entry.dart';
+import '../models/term_context_entry.dart';
 import '../database/app_database.dart';
 import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/audio_recorder.dart';
 import '../services/local_llm_service.dart';
+import '../services/markdown_term_import_service.dart';
 
 class DictionaryCsvImportResult {
   final int totalRows;
@@ -61,6 +65,8 @@ class SettingsProvider extends ChangeNotifier {
   static const _dictionaryEntriesKey = 'dictionary_entries';
   static const _dictationTermPendingCandidatesKey =
       'dictation_term_pending_candidates_v1';
+  static const _termContextEntriesKey = 'term_context_entries_v1';
+  static const _importedReferenceTermsKey = 'imported_reference_terms_v1';
   static const _correctionEnabledKey = 'correction_enabled';
   static const _retrospectiveCorrectionEnabledKey =
       'retrospective_correction_enabled';
@@ -132,6 +138,7 @@ class SettingsProvider extends ChangeNotifier {
   // Dictionary entries
   List<DictionaryEntry> _dictionaryEntries = [];
   List<DictationTermPendingCandidate> _dictationTermPendingCandidates = [];
+  List<TermContextEntry> _termContextEntries = [];
 
   // Correction settings
   bool _correctionEnabled = true;
@@ -142,6 +149,8 @@ class SettingsProvider extends ChangeNotifier {
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
   );
+  static const MarkdownTermImportService _markdownTermImportService =
+      MarkdownTermImportService();
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -207,6 +216,8 @@ class SettingsProvider extends ChangeNotifier {
       List.unmodifiable(_dictionaryEntries);
   List<DictationTermPendingCandidate> get dictationTermPendingCandidates =>
       List.unmodifiable(_dictationTermPendingCandidates);
+  List<TermContextEntry> get termContextEntries =>
+      List.unmodifiable(_termContextEntries);
 
   // Correction getters
   bool get correctionEnabled => _correctionEnabled;
@@ -544,6 +555,44 @@ class SettingsProvider extends ChangeNotifier {
                 .toList()
               ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       } catch (_) {}
+    }
+
+    final termContextEntriesJson = await db.getSetting(_termContextEntriesKey);
+    if (termContextEntriesJson != null) {
+      try {
+        final list = json.decode(termContextEntriesJson) as List<dynamic>;
+        _termContextEntries = list
+            .whereType<Map<String, dynamic>>()
+            .map((e) => TermContextEntry.fromJson(e))
+            .where((entry) => entry.promptTerm.isNotEmpty)
+            .toList(growable: false);
+      } catch (_) {}
+    } else {
+      final importedReferenceTermsJson = await db.getSetting(
+        _importedReferenceTermsKey,
+      );
+      if (importedReferenceTermsJson != null) {
+        try {
+          final list = json.decode(importedReferenceTermsJson) as List<dynamic>;
+          _termContextEntries = list
+              .whereType<Map<String, dynamic>>()
+              .map((e) => ImportedReferenceTerm.fromJson(e))
+              .where((term) => term.term.isNotEmpty)
+              .map(
+                (term) => TermContextEntry.create(
+                  term: term.term,
+                  canonical: term.term,
+                  sourceName: term.sourceName,
+                  entryType: TermContextEntryType.reference,
+                  confidence: 0.6,
+                ).copyWith(createdAt: term.createdAt),
+              )
+              .toList(growable: false);
+          if (_termContextEntries.isNotEmpty) {
+            await _saveTermContextEntries();
+          }
+        } catch (_) {}
+      }
     }
 
     // 构建拼音索引
@@ -1183,6 +1232,20 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> _saveTermContextEntries() async {
+    await _saveSetting(
+      _termContextEntriesKey,
+      json.encode(_termContextEntries.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _saveImportedReferenceTerms() async {
+    await _saveSetting(
+      _importedReferenceTermsKey,
+      json.encode(const <Map<String, dynamic>>[]),
+    );
+  }
+
   /// 重建拼音索引（词典变更后调用）
   void _rebuildPinyinIndex() {
     _pinyinMatcher.buildIndex(_dictionaryEntries);
@@ -1670,6 +1733,158 @@ class SettingsProvider extends ChangeNotifier {
       importedRows: importedRows,
       skippedRows: skippedRows,
     );
+  }
+
+  MarkdownTermImportResult previewContextMarkdownImport(
+    String markdownContent, {
+    required String fileName,
+  }) {
+    return _markdownTermImportService.parse(markdownContent, fileName: fileName);
+  }
+
+  Future<MarkdownTermImportResult> applyTermContextMarkdownImport(
+    MarkdownTermImportResult result,
+  ) async {
+    final mergedEntries = <TermContextEntry>[];
+    final existingBySignature = <String, TermContextEntry>{
+      for (final entry in _termContextEntries) entry.signature: entry,
+    };
+
+    for (final entry in [
+      ...result.contextEntries,
+      ...result.referenceOnlyTerms,
+    ]) {
+      final existing = existingBySignature[entry.signature];
+      if (existing != null) {
+        if (!existing.enabled && entry.enabled) {
+          final updated = existing.copyWith(enabled: true);
+          _termContextEntries = _termContextEntries
+              .map((item) => item.id == existing.id ? updated : item)
+              .toList(growable: false);
+          existingBySignature[entry.signature] = updated;
+          mergedEntries.add(updated);
+        } else {
+          mergedEntries.add(existing);
+        }
+        continue;
+      }
+
+      final normalized = entry.copyWith(
+        sourceName: entry.sourceName.isEmpty ? result.fileName : entry.sourceName,
+      );
+      _termContextEntries = [normalized, ..._termContextEntries];
+      existingBySignature[normalized.signature] = normalized;
+      mergedEntries.add(normalized);
+    }
+
+    if (mergedEntries.isNotEmpty) {
+      await _saveTermContextEntries();
+      await _saveImportedReferenceTerms();
+      notifyListeners();
+    }
+
+    final mergedSignatures = <String, TermContextEntry>{
+      for (final entry in mergedEntries) entry.signature: entry,
+    };
+    TermContextEntry resolve(TermContextEntry entry) =>
+        mergedSignatures[entry.signature] ?? entry;
+
+    return MarkdownTermImportResult(
+      fileName: result.fileName,
+      contextEntries: result.contextEntries.map(resolve).toList(growable: false),
+      promotableCorrections: result.promotableCorrections
+          .map(resolve)
+          .toList(growable: false),
+      promotablePreserves: result.promotablePreserves
+          .map(resolve)
+          .toList(growable: false),
+      referenceOnlyTerms: result.referenceOnlyTerms
+          .map(resolve)
+          .toList(growable: false),
+      warnings: result.warnings,
+      skippedItems: result.skippedItems,
+    );
+  }
+
+  Future<void> removeTermContextEntries(List<String> ids) async {
+    if (ids.isEmpty) return;
+    final idSet = ids.toSet();
+    final next = _termContextEntries
+        .where((entry) => !idSet.contains(entry.id))
+        .toList(growable: false);
+    if (next.length == _termContextEntries.length) return;
+    _termContextEntries = next;
+    await _saveTermContextEntries();
+    notifyListeners();
+  }
+
+  Future<void> setTermContextEntryEnabled(String id, bool enabled) async {
+    var changed = false;
+    _termContextEntries = _termContextEntries.map((entry) {
+      if (entry.id != id || entry.enabled == enabled) return entry;
+      changed = true;
+      return entry.copyWith(enabled: enabled);
+    }).toList(growable: false);
+    if (!changed) return;
+    await _saveTermContextEntries();
+    notifyListeners();
+  }
+
+  Future<void> removeTermContextEntry(String id) async {
+    final next = _termContextEntries.where((entry) => entry.id != id).toList();
+    if (next.length == _termContextEntries.length) return;
+    _termContextEntries = next;
+    await _saveTermContextEntries();
+    notifyListeners();
+  }
+
+  Future<DictionaryEntry?> promoteTermContextEntryToDictionary(String id) async {
+    TermContextEntry? entry;
+    for (final item in _termContextEntries) {
+      if (item.id == id) {
+        entry = item;
+        break;
+      }
+    }
+    if (entry == null) return null;
+    final selectedEntry = entry;
+
+    if (selectedEntry.promotableAsCorrection) {
+      return upsertDictionaryCorrectionEntry(
+        original: selectedEntry.alias ?? '',
+        corrected: selectedEntry.promptTerm,
+        category: 'Context提升',
+        source: DictionaryEntrySource.manual,
+      );
+    }
+
+    if (!selectedEntry.promotableAsPreserve) {
+      return null;
+    }
+
+    final existing = _dictionaryEntries.where((item) {
+      return item.type == DictionaryEntryType.preserve &&
+          item.original.trim().toLowerCase() ==
+              selectedEntry.promptTerm.toLowerCase();
+    }).toList(growable: false);
+
+    if (existing.isNotEmpty) {
+      final found = existing.first;
+      if (!found.enabled) {
+        final updated = found.copyWith(enabled: true);
+        await updateDictionaryEntry(updated);
+        return updated;
+      }
+      return found;
+    }
+
+    final created = DictionaryEntry.create(
+      original: selectedEntry.promptTerm,
+      category: 'Context提升',
+      source: DictionaryEntrySource.manual,
+    );
+    await addDictionaryEntry(created);
+    return created;
   }
 
   String _csvCellToString(dynamic value) {

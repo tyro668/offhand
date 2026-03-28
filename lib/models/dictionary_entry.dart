@@ -10,7 +10,7 @@ enum DictionaryEntryType {
   preserve,
 }
 
-enum DictionaryEntrySource { manual, historyEdit }
+enum DictionaryEntrySource { manual, historyEdit, markdownImport }
 
 /// 词典条目 — 用于指导 AI 模型进行文字纠正和术语保留。
 class DictionaryEntry {
@@ -237,6 +237,10 @@ class DictionaryEntry {
     if ((raw ?? '').trim() == DictionaryEntrySource.historyEdit.name ||
         legacyCategory == '历史修正') {
       return DictionaryEntrySource.historyEdit;
+    }
+    if ((raw ?? '').trim() == DictionaryEntrySource.markdownImport.name ||
+        legacyCategory == 'Markdown导入') {
+      return DictionaryEntrySource.markdownImport;
     }
     return DictionaryEntrySource.manual;
   }

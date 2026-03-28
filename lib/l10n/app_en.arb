@@ -454,6 +454,98 @@
   "correctionDescription": "Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty",
   "retrospectiveCorrectionEnabled": "Retrospective Review",
   "retrospectiveCorrectionDescription": "Run one more paragraph-level correction when recording stops for better term consistency",
+  "textProcessing": "Text Processing",
+  "textProcessingDescription": "Control correction and context enhancement after transcription.",
+  "historyContextEnabled": "History Context Enhancement",
+  "historyContextEnabledDescription": "Use recent related history to improve continuation and context coherence.",
+  "contextTab": "Context",
+  "contextImportMarkdown": "Import Markdown",
+  "contextSearchHint": "Search terms, aliases, sources",
+  "contextEmpty": "No context",
+  "contextCanPromote": "Promotable",
+  "contextPromoteToDictionary": "Promote",
+  "contextTypeCorrectionHint": "Correction Hint",
+  "contextTypePreserveHint": "Preserve Hint",
+  "contextTypeReference": "Reference",
+  "contextImportDialogTitle": "Import Markdown",
+  "contextImportFailed": "Failed to import Markdown",
+  "contextImportPreviewTitle": "Import Preview",
+  "contextPromoteUnavailable": "This entry cannot be promoted to the dictionary",
+  "contextCount": "{count} items",
+  "@contextCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "contextSelectedCount": "{count} selected",
+  "@contextSelectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "contextSelectAll": "Select all",
+  "contextDeleteSelected": "Delete selected",
+  "contextDeleteSelectedSuccess": "Deleted {count} context items",
+  "@contextDeleteSelectedSuccess": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "contextContentEmpty": "Empty content",
+  "contextAliasLabel": "Alias / Misheard: {value}",
+  "@contextAliasLabel": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "contextSourceLabel": "Source: {value}",
+  "@contextSourceLabel": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
+  "contextDeleteSuccess": "Deleted {term}",
+  "@contextDeleteSuccess": {
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "contextPromoteSuccess": "Promoted {term} to dictionary",
+  "@contextPromoteSuccess": {
+    "placeholders": {
+      "term": {"type": "String"}
+    }
+  },
+  "contextImportSuccess": "Import complete: context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}",
+  "@contextImportSuccess": {
+    "placeholders": {
+      "contextCount": {"type": "int"},
+      "correctionCount": {"type": "int"},
+      "preserveCount": {"type": "int"},
+      "referenceCount": {"type": "int"}
+    }
+  },
+  "contextImportPreviewSummary": "{fileCount} files, context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}, skipped {skippedCount}",
+  "@contextImportPreviewSummary": {
+    "placeholders": {
+      "fileCount": {"type": "int"},
+      "contextCount": {"type": "int"},
+      "correctionCount": {"type": "int"},
+      "preserveCount": {"type": "int"},
+      "referenceCount": {"type": "int"},
+      "skippedCount": {"type": "int"}
+    }
+  },
+  "contextImportPreviewItemSummary": "Context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}, skipped {skippedCount}",
+  "@contextImportPreviewItemSummary": {
+    "placeholders": {
+      "contextCount": {"type": "int"},
+      "correctionCount": {"type": "int"},
+      "preserveCount": {"type": "int"},
+      "referenceCount": {"type": "int"},
+      "skippedCount": {"type": "int"}
+    }
+  },
   "pinyinPreview": "Pinyin",
   "pinyinOverride": "Pinyin Pattern (optional)",
   "pinyinOverrideHint": "E.g. fan ruan; supports pinyin-only matching, space-separated syllables",

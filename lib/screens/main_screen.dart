@@ -484,6 +484,8 @@ class _MainScreenState extends State<MainScreen> {
         aiConfig: settings.effectiveAiEnhanceConfig,
         aiEnhanceEnabled: settings.aiEnhanceEnabled,
         dictionarySuffix: settings.dictionaryWordsForPrompt,
+        dictionaryEntries: settings.dictionaryEntries,
+        termContextEntries: settings.termContextEntries,
         pinyinMatcher: settings.correctionEffective
             ? settings.pinyinMatcher
             : null,
@@ -506,6 +508,8 @@ class _MainScreenState extends State<MainScreen> {
         matcher: settings.pinyinMatcher,
         aiConfig: settings.effectiveAiEnhanceConfig,
         correctionPrompt: settings.correctionPrompt,
+        dictionaryEntries: settings.dictionaryEntries,
+        termContextEntries: settings.termContextEntries,
         maxReferenceEntries: settings.correctionMaxReferenceEntries,
         minCandidateScore: settings.correctionMinCandidateScore,
       );
