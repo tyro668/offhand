@@ -106,9 +106,16 @@ class _MainScreenState extends State<MainScreen> {
   bool _fnTapToTalkPressCandidate = false;
 
   /// 主导航项（首页 / 词典 / 历史记录 / 会议记录）
-  List<_NavItem> _getNavItems(AppLocalizations l10n) => [
+  List<_NavItem> _getNavItems(
+    AppLocalizations l10n, {
+    required int pendingCandidateCount,
+  }) => [
     _NavItem(icon: Icons.home_outlined, label: l10n.home),
-    _NavItem(icon: Icons.menu_book_outlined, label: l10n.dictionarySettings),
+    _NavItem(
+      icon: Icons.menu_book_outlined,
+      label: l10n.dictionarySettings,
+      badgeCount: pendingCandidateCount,
+    ),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
     _NavItem(
       icon: Icons.record_voice_over_outlined,
@@ -414,6 +421,8 @@ class _MainScreenState extends State<MainScreen> {
             settings.config,
             aiEnhanceEnabled: settings.aiEnhanceEnabled,
             aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+            historyContextEnhancementEnabled:
+                settings.historyContextEnhancementEnabled,
             minRecordingSeconds: settings.minRecordingSeconds,
             useStreaming: settings.aiEnhanceEnabled,
           );
@@ -443,6 +452,8 @@ class _MainScreenState extends State<MainScreen> {
           settings.config,
           aiEnhanceEnabled: settings.aiEnhanceEnabled,
           aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+          historyContextEnhancementEnabled:
+              settings.historyContextEnhancementEnabled,
           minRecordingSeconds: settings.minRecordingSeconds,
           useStreaming: settings.aiEnhanceEnabled,
         );
@@ -472,12 +483,6 @@ class _MainScreenState extends State<MainScreen> {
         sttConfig: settings.config,
         aiConfig: settings.effectiveAiEnhanceConfig,
         aiEnhanceEnabled: settings.aiEnhanceEnabled,
-        speaker3dEnabled: settings.speaker3dEnabled,
-        speaker3dModelPath: settings.speaker3dModelPath,
-        speaker3dMaxSpeakers: settings.speaker3dMaxSpeakers,
-        speaker3dOnlineBaseThreshold: settings.speaker3dOnlineBaseThreshold,
-        speaker3dTop1Top2Margin: settings.speaker3dTop1Top2Margin,
-        speaker3dOfflineMergeThreshold: settings.speaker3dOfflineMergeThreshold,
         dictionarySuffix: settings.dictionaryWordsForPrompt,
         pinyinMatcher: settings.correctionEffective
             ? settings.pinyinMatcher
@@ -523,6 +528,8 @@ class _MainScreenState extends State<MainScreen> {
           settings.config,
           aiEnhanceEnabled: settings.aiEnhanceEnabled,
           aiEnhanceConfig: settings.effectiveAiEnhanceConfig,
+          historyContextEnhancementEnabled:
+              settings.historyContextEnhancementEnabled,
           minRecordingSeconds: settings.minRecordingSeconds,
           useStreaming: settings.aiEnhanceEnabled,
         );
@@ -565,8 +572,11 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildSidebar() {
     final l10n = AppLocalizations.of(context)!;
-    final navItems = _getNavItems(l10n);
     final settings = context.watch<SettingsProvider>();
+    final navItems = _getNavItems(
+      l10n,
+      pendingCandidateCount: settings.dictationTermPendingCandidates.length,
+    );
     return Container(
       width: 188,
       decoration: BoxDecoration(
@@ -636,18 +646,47 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: selected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: selected
-                                  ? _cs.primary
-                                  : _cs.onSurfaceVariant.withValues(alpha: 0.9),
+                          Expanded(
+                            child: Text(
+                              item.label,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: selected
+                                    ? _cs.primary
+                                    : _cs.onSurfaceVariant.withValues(
+                                        alpha: 0.9,
+                                      ),
+                              ),
                             ),
                           ),
+                          if (item.badgeCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? _cs.primary
+                                    : _cs.secondaryContainer,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                item.badgeCount > 99
+                                    ? '99+'
+                                    : '${item.badgeCount}',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: selected
+                                      ? _cs.onPrimary
+                                      : _cs.onSecondaryContainer,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -778,7 +817,13 @@ class _MainScreenState extends State<MainScreen> {
     Widget page = switch (_selectedNav) {
       0 => const DashboardPage(),
       1 => const DictionaryPage(),
-      2 => const HistoryPage(),
+      2 => HistoryPage(
+        onOpenPendingCandidates: () {
+          setState(() {
+            _selectedNav = 1;
+          });
+        },
+      ),
       3 => const MeetingDashboardPage(),
       _ => const SizedBox(),
     };
@@ -1018,5 +1063,11 @@ class _MainScreenState extends State<MainScreen> {
 class _NavItem {
   final IconData icon;
   final String label;
-  const _NavItem({required this.icon, required this.label});
+  final int badgeCount;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    this.badgeCount = 0,
+  });
 }

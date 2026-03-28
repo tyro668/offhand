@@ -438,6 +438,23 @@ class _GeneralPageState extends State<GeneralPage> {
           _buildSceneModeSelector(settings, l10n),
           const SizedBox(height: 36),
 
+          Text(
+            '历史上下文优化',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: _cs.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '利用最近的历史记录帮助当前听写延续主题和表达风格，不影响术语纠正能力。',
+            style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          _buildHistoryContextSection(settings),
+          const SizedBox(height: 36),
+
           // ===== 语言设置 =====
           Text(
             l10n.language,
@@ -691,6 +708,52 @@ class _GeneralPageState extends State<GeneralPage> {
             onChanged: (mode) {
               if (mode != null) settings.setSceneMode(mode);
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryContextSection(SettingsProvider settings) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.history_toggle_off_outlined, size: 20, color: _cs.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '启用历史上下文优化',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '开启后，系统会在 AI 增强前参考最近几条相关历史，优化续写、语气和上下文连贯性。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _cs.outline,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Switch(
+            value: settings.historyContextEnhancementEnabled,
+            onChanged: (v) => settings.setHistoryContextEnhancementEnabled(v),
           ),
         ],
       ),

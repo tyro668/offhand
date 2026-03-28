@@ -83,8 +83,6 @@ class MeetingSegment {
   final String? audioFilePath;
   String? transcription;
   String? enhancedText;
-  String? speakerId;
-  double? speakerConfidence;
   SegmentStatus status;
   String? errorMessage;
 
@@ -97,87 +95,12 @@ class MeetingSegment {
     this.audioFilePath,
     this.transcription,
     this.enhancedText,
-    this.speakerId,
-    this.speakerConfidence,
     this.status = SegmentStatus.pending,
     this.errorMessage,
   });
 
   /// 获取显示文本（优先整理后文本，否则原始转写）
   String? get displayText => enhancedText ?? transcription;
-
-  String? get detectedSpeakerId {
-    final explicit = normalizeSpeakerId(speakerId);
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    final fromDisplay = _extractSpeakerPrefix(displayText ?? '');
-    return fromDisplay;
-  }
-
-  String get displayTextWithoutSpeaker {
-    final text = (displayText ?? '').trim();
-    return _stripSpeakerPrefix(text).trim();
-  }
-
-  String get displayTextWithSpeaker {
-    final text = displayTextWithoutSpeaker;
-    if (text.isEmpty) return '';
-    final spk = detectedSpeakerId;
-    if (spk == null || spk.isEmpty) return text;
-    return '$spk: $text';
-  }
-
-  static String speakerLabel(
-    String? speakerId, {
-    required String Function(String index) userFormatter,
-  }) {
-    final normalized = normalizeSpeakerId(speakerId);
-    if (normalized == null) return '';
-    final indexMatch = RegExp(
-      r'^(?:speaker|讲话人|s)\s*(\d+)$',
-      caseSensitive: false,
-    ).firstMatch(normalized);
-    if (indexMatch == null) return normalized;
-    final idx = indexMatch.group(1)!;
-    return userFormatter(idx);
-  }
-
-  static String withSpeakerPrefix(String text, String speakerId) {
-    final cleanText = _stripSpeakerPrefix(text).trim();
-    if (cleanText.isEmpty) return cleanText;
-    final cleanSpeaker = normalizeSpeakerId(speakerId) ?? '';
-    if (cleanSpeaker.isEmpty) return cleanText;
-    return '$cleanSpeaker: $cleanText';
-  }
-
-  static String? normalizeSpeakerId(String? raw) {
-    final value = (raw ?? '').trim();
-    if (value.isEmpty) return null;
-
-    final speakerMatch = RegExp(
-      r'^(?:Speaker|讲话人|S)\s*(\d+)$',
-      caseSensitive: false,
-    ).firstMatch(value);
-    if (speakerMatch != null) {
-      final idx = speakerMatch.group(1)!;
-      return 'speaker$idx';
-    }
-    return value;
-  }
-
-  static String? _extractSpeakerPrefix(String text) {
-    final match = RegExp(
-      r'^\s*((?:Speaker|讲话人|S)\s*\d+)\s*[:：]\s*',
-      caseSensitive: false,
-    ).firstMatch(text);
-    return normalizeSpeakerId(match?.group(1));
-  }
-
-  static String _stripSpeakerPrefix(String text) {
-    return text.replaceFirst(
-      RegExp(r'^\s*((?:Speaker|讲话人|S)\s*\d+)\s*[:：]\s*', caseSensitive: false),
-      '',
-    );
-  }
 
   /// 格式化时间戳
   String get formattedTimestamp {
@@ -204,8 +127,6 @@ class MeetingSegment {
     'audioFilePath': audioFilePath,
     'transcription': transcription,
     'enhancedText': enhancedText,
-    'speakerId': speakerId,
-    'speakerConfidence': speakerConfidence,
     'status': status.name,
     'errorMessage': errorMessage,
   };
@@ -219,8 +140,6 @@ class MeetingSegment {
     audioFilePath: json['audioFilePath'] as String?,
     transcription: json['transcription'] as String?,
     enhancedText: json['enhancedText'] as String?,
-    speakerId: json['speakerId'] as String?,
-    speakerConfidence: (json['speakerConfidence'] as num?)?.toDouble(),
     status: SegmentStatus.values.byName(json['status'] as String),
     errorMessage: json['errorMessage'] as String?,
   );

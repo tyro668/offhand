@@ -4,7 +4,6 @@
   "loading": "加载中...",
   "generalSettings": "通用设置",
   "voiceModelSettings": "语音模型",
-  "speakerModelSettings": "声纹模型",
   "textModelSettings": "文本模型",
   "promptWorkshop": "提示词设置",
   "aiEnhanceHub": "智能增强",
@@ -225,65 +224,6 @@
     "placeholders": {
       "value": {
         "type": "int"
-      }
-    }
-  },
-
-  "speakerModelTitle": "会议声纹识别（3D-Speaker）",
-  "speakerModelDescription": "启用本地 3D-Speaker 模型做说话人区分，可设置最大说话人数与模型路径",
-  "speakerModelEnable": "启用 3D-Speaker",
-  "speakerModelHeaderTitle": "3D-Speaker 声纹识别",
-  "speakerModelHeaderSubtitle": "高精度说话人分离与识别引擎",
-  "speakerModelBasicSettings": "基础设置",
-  "speakerModelAlgorithmParams": "算法参数",
-  "speakerModelManagement": "声纹模型管理",
-  "speakerModelImportLocal": "导入本地模型",
-  "speakerModelSingleSpeakerMode": "单人演讲模式",
-  "speakerModelSingleSpeakerModeDesc": "适用于单人发言场景，强制全部分段归为同一说话人",
-  "speakerModelMaxSpeakers": "最大说话人数",
-  "speakerModelMaxSpeakersDesc": "限制一次会议最多分出多少个说话人簇",
-  "speakerModelPresetTitle": "一键预设",
-  "speakerModelPresetConsistency": "一致性优先",
-  "speakerModelPresetBalanced": "均衡",
-  "speakerModelPresetSeparation": "区分优先",
-  "speakerModelOnlineBaseThreshold": "在线判定阈值",
-  "speakerModelOnlineBaseThresholdDesc": "越低越容易合并为同一人，越高越容易拆分为不同人",
-  "speakerModelTop1Top2Margin": "候选区分间隔",
-  "speakerModelTop1Top2MarginDesc": "越小越容易接受当前最佳候选，提高连续一致性",
-  "speakerModelOfflineMergeThreshold": "离线合并阈值",
-  "speakerModelOfflineMergeThresholdDesc": "会后重聚类时的合并阈值，越低越容易合并",
-  "speakerModelPathNotSet": "未设置模型路径（将尝试默认目录）",
-  "speakerModelPickModel": "选择模型",
-  "speakerModelDownloading": "下载中...",
-  "speakerModelDownloadDefault": "下载默认模型",
-  "speakerModelDownloadSource": "下载源",
-  "speakerModelDownloadSourceAuto": "自动",
-  "speakerModelDownloadSourceDirect": "仅直连",
-  "speakerModelDownloadSourceMirror": "仅镜像",
-  "speakerModelReady": "模型文件已就绪",
-  "speakerModelMissing": "模型文件不存在，请重新选择",
-  "speakerModelDefaultLookup": "默认查找：应用目录/models/3d-speaker/model.onnx",
-  "speakerModelDownloaded": "3D-Speaker 模型下载完成",
-  "speakerModelDownloadFailed": "下载失败，请检查网络或手动选择 onnx 模型",
-  "speakerModelDownloadStatusKnown": "已下载 {downloaded} / {total}（{percent}%）",
-  "@speakerModelDownloadStatusKnown": {
-    "placeholders": {
-      "downloaded": {
-        "type": "String"
-      },
-      "total": {
-        "type": "String"
-      },
-      "percent": {
-        "type": "String"
-      }
-    }
-  },
-  "speakerModelDownloadStatusUnknown": "已下载 {downloaded}（总大小未知）",
-  "@speakerModelDownloadStatusUnknown": {
-    "placeholders": {
-      "downloaded": {
-        "type": "String"
       }
     }
   },

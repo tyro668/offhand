@@ -8,6 +8,7 @@ import '../models/ai_model_entry.dart';
 import '../models/ai_vendor_preset.dart';
 import '../models/network_settings.dart';
 import '../models/dictionary_entry.dart';
+import '../models/dictation_term_pending_candidate.dart';
 import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
 import '../models/scene_mode.dart';
@@ -58,29 +59,14 @@ class SettingsProvider extends ChangeNotifier {
   static const _activePromptTemplateIdKey = 'active_prompt_template_id';
   static const _sceneModeKey = 'scene_mode';
   static const _dictionaryEntriesKey = 'dictionary_entries';
+  static const _dictationTermPendingCandidatesKey =
+      'dictation_term_pending_candidates_v1';
   static const _correctionEnabledKey = 'correction_enabled';
   static const _retrospectiveCorrectionEnabledKey =
       'retrospective_correction_enabled';
+  static const _historyContextEnhancementEnabledKey =
+      'history_context_enhancement_enabled';
   static const _localLlmIdleUnloadMinutesKey = 'local_llm_idle_unload_minutes';
-  static const _speaker3dEnabledKey = 'speaker_3d_enabled';
-  static const _speaker3dModelPathKey = 'speaker_3d_model_path';
-  static const _speaker3dModelPathsKey = 'speaker_3d_model_paths';
-  static const _speaker3dMaxSpeakersKey = 'speaker_3d_max_speakers';
-  static const _speaker3dSingleSpeakerModeKey =
-      'speaker_3d_single_speaker_mode';
-  static const _speaker3dOnlineBaseThresholdKey =
-      'speaker_3d_online_base_threshold';
-  static const _speaker3dTop1Top2MarginKey = 'speaker_3d_top1_top2_margin';
-  static const _speaker3dOfflineMergeThresholdKey =
-      'speaker_3d_offline_merge_threshold';
-  static const _speaker3dDownloadSourceModeKey =
-      'speaker_3d_download_source_mode';
-  static const _speaker3dDownloadSourceModeAuto = 'auto';
-  static const _speaker3dDownloadSourceModeDirect = 'direct';
-  static const _speaker3dDownloadSourceModeMirror = 'mirror';
-  static const speaker3dPresetConsistency = 'consistency';
-  static const speaker3dPresetBalanced = 'balanced';
-  static const speaker3dPresetSeparation = 'separation';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -145,21 +131,14 @@ class SettingsProvider extends ChangeNotifier {
 
   // Dictionary entries
   List<DictionaryEntry> _dictionaryEntries = [];
+  List<DictationTermPendingCandidate> _dictationTermPendingCandidates = [];
 
   // Correction settings
   bool _correctionEnabled = true;
   bool _retrospectiveCorrectionEnabled = false;
+  bool _historyContextEnhancementEnabled = true;
   String _correctionPrompt = '';
   int _localLlmIdleUnloadMinutes = 3;
-  bool _speaker3dEnabled = true;
-  String _speaker3dModelPath = '';
-  List<String> _speaker3dModelPaths = [];
-  int _speaker3dMaxSpeakers = 6;
-  bool _speaker3dSingleSpeakerMode = false;
-  double _speaker3dOnlineBaseThreshold = 0.78;
-  double _speaker3dTop1Top2Margin = 0.04;
-  double _speaker3dOfflineMergeThreshold = 0.80;
-  String _speaker3dDownloadSourceMode = _speaker3dDownloadSourceModeAuto;
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
   );
@@ -226,22 +205,16 @@ class SettingsProvider extends ChangeNotifier {
   // Dictionary getter
   List<DictionaryEntry> get dictionaryEntries =>
       List.unmodifiable(_dictionaryEntries);
+  List<DictationTermPendingCandidate> get dictationTermPendingCandidates =>
+      List.unmodifiable(_dictationTermPendingCandidates);
 
   // Correction getters
   bool get correctionEnabled => _correctionEnabled;
   bool get retrospectiveCorrectionEnabled => _retrospectiveCorrectionEnabled;
+  bool get historyContextEnhancementEnabled =>
+      _historyContextEnhancementEnabled;
   String get correctionPrompt => _correctionPrompt;
   int get localLlmIdleUnloadMinutes => _localLlmIdleUnloadMinutes;
-  bool get speaker3dEnabled => _speaker3dEnabled;
-  String get speaker3dModelPath => _speaker3dModelPath;
-  List<String> get speaker3dModelPaths =>
-      List.unmodifiable(_speaker3dModelPaths);
-  int get speaker3dMaxSpeakers => _speaker3dMaxSpeakers;
-  bool get speaker3dSingleSpeakerMode => _speaker3dSingleSpeakerMode;
-  double get speaker3dOnlineBaseThreshold => _speaker3dOnlineBaseThreshold;
-  double get speaker3dTop1Top2Margin => _speaker3dTop1Top2Margin;
-  double get speaker3dOfflineMergeThreshold => _speaker3dOfflineMergeThreshold;
-  String get speaker3dDownloadSourceMode => _speaker3dDownloadSourceMode;
   PinyinMatcher get pinyinMatcher => _pinyinMatcher;
   int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
   double get correctionMinCandidateScore => _correctionMinCandidateScore;
@@ -553,6 +526,26 @@ class SettingsProvider extends ChangeNotifier {
       } catch (_) {}
     }
 
+    final pendingCandidatesJson = await db.getSetting(
+      _dictationTermPendingCandidatesKey,
+    );
+    if (pendingCandidatesJson != null) {
+      try {
+        final list = json.decode(pendingCandidatesJson) as List<dynamic>;
+        _dictationTermPendingCandidates =
+            list
+                .whereType<Map<String, dynamic>>()
+                .map((e) => DictationTermPendingCandidate.fromJson(e))
+                .where(
+                  (candidate) =>
+                      candidate.original.isNotEmpty &&
+                      candidate.corrected.isNotEmpty,
+                )
+                .toList()
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } catch (_) {}
+    }
+
     // 构建拼音索引
     _pinyinMatcher.buildIndex(_dictionaryEntries);
 
@@ -567,113 +560,19 @@ class SettingsProvider extends ChangeNotifier {
       _retrospectiveCorrectionEnabled = retroStr == 'true';
     }
 
+    final historyContextStr = await db.getSetting(
+      _historyContextEnhancementEnabledKey,
+    );
+    if (historyContextStr != null) {
+      _historyContextEnhancementEnabled = historyContextStr == 'true';
+    }
+
     final localLlmIdleUnloadMinutesStr = await db.getSetting(
       _localLlmIdleUnloadMinutesKey,
     );
     if (localLlmIdleUnloadMinutesStr != null) {
       _localLlmIdleUnloadMinutes =
           int.tryParse(localLlmIdleUnloadMinutesStr)?.clamp(0, 30) ?? 3;
-    }
-
-    final speaker3dEnabledStr = await db.getSetting(_speaker3dEnabledKey);
-    if (speaker3dEnabledStr != null) {
-      _speaker3dEnabled = speaker3dEnabledStr == 'true';
-    }
-
-    final speaker3dModelPathStr = await db.getSetting(_speaker3dModelPathKey);
-    if (speaker3dModelPathStr != null) {
-      _speaker3dModelPath = speaker3dModelPathStr.trim();
-    }
-
-    final speaker3dModelPathsStr = await db.getSetting(_speaker3dModelPathsKey);
-    if (speaker3dModelPathsStr != null && speaker3dModelPathsStr.isNotEmpty) {
-      try {
-        final decoded = json.decode(speaker3dModelPathsStr);
-        if (decoded is List) {
-          _speaker3dModelPaths = decoded
-              .whereType<String>()
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toSet()
-              .toList();
-        }
-      } catch (_) {}
-    }
-
-    if (_speaker3dModelPath.isNotEmpty &&
-        !_speaker3dModelPaths.contains(_speaker3dModelPath)) {
-      _speaker3dModelPaths = [_speaker3dModelPath, ..._speaker3dModelPaths];
-    }
-    if (_speaker3dModelPath.isEmpty && _speaker3dModelPaths.isNotEmpty) {
-      _speaker3dModelPath = _speaker3dModelPaths.first;
-    }
-    if (_speaker3dModelPath.isNotEmpty) {
-      await _saveSetting(_speaker3dModelPathKey, _speaker3dModelPath);
-    }
-    await _saveSetting(
-      _speaker3dModelPathsKey,
-      json.encode(_speaker3dModelPaths),
-    );
-
-    final speaker3dMaxSpeakersStr = await db.getSetting(
-      _speaker3dMaxSpeakersKey,
-    );
-    if (speaker3dMaxSpeakersStr != null) {
-      _speaker3dMaxSpeakers =
-          int.tryParse(speaker3dMaxSpeakersStr)?.clamp(1, 12) ?? 6;
-    }
-
-    final speaker3dSingleSpeakerModeStr = await db.getSetting(
-      _speaker3dSingleSpeakerModeKey,
-    );
-    if (speaker3dSingleSpeakerModeStr != null) {
-      _speaker3dSingleSpeakerMode = speaker3dSingleSpeakerModeStr == 'true';
-    }
-
-    final speaker3dOnlineBaseThresholdStr = await db.getSetting(
-      _speaker3dOnlineBaseThresholdKey,
-    );
-    if (speaker3dOnlineBaseThresholdStr != null) {
-      _speaker3dOnlineBaseThreshold =
-          (double.tryParse(speaker3dOnlineBaseThresholdStr) ??
-                  _speaker3dOnlineBaseThreshold)
-              .clamp(0.5, 0.95)
-              .toDouble();
-    }
-
-    final speaker3dTop1Top2MarginStr = await db.getSetting(
-      _speaker3dTop1Top2MarginKey,
-    );
-    if (speaker3dTop1Top2MarginStr != null) {
-      _speaker3dTop1Top2Margin =
-          (double.tryParse(speaker3dTop1Top2MarginStr) ??
-                  _speaker3dTop1Top2Margin)
-              .clamp(0.0, 0.20)
-              .toDouble();
-    }
-
-    final speaker3dOfflineMergeThresholdStr = await db.getSetting(
-      _speaker3dOfflineMergeThresholdKey,
-    );
-    if (speaker3dOfflineMergeThresholdStr != null) {
-      _speaker3dOfflineMergeThreshold =
-          (double.tryParse(speaker3dOfflineMergeThresholdStr) ??
-                  _speaker3dOfflineMergeThreshold)
-              .clamp(0.5, 0.95)
-              .toDouble();
-    }
-
-    if (_speaker3dSingleSpeakerMode) {
-      _speaker3dMaxSpeakers = 1;
-    }
-
-    final speaker3dDownloadSourceModeStr = await db.getSetting(
-      _speaker3dDownloadSourceModeKey,
-    );
-    if (speaker3dDownloadSourceModeStr != null) {
-      _speaker3dDownloadSourceMode = _normalizeSpeaker3dDownloadSourceMode(
-        speaker3dDownloadSourceModeStr,
-      );
     }
 
     // 加载纠错 prompt
@@ -684,8 +583,26 @@ class SettingsProvider extends ChangeNotifier {
     } catch (_) {}
 
     await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
+    await _cleanupRemovedSpeakerSettings();
 
     notifyListeners();
+  }
+
+  Future<void> _cleanupRemovedSpeakerSettings() async {
+    const keys = [
+      'speaker_3d_enabled',
+      'speaker_3d_model_path',
+      'speaker_3d_model_paths',
+      'speaker_3d_max_speakers',
+      'speaker_3d_single_speaker_mode',
+      'speaker_3d_online_base_threshold',
+      'speaker_3d_top1_top2_margin',
+      'speaker_3d_offline_merge_threshold',
+      'speaker_3d_download_source_mode',
+    ];
+    for (final key in keys) {
+      await AppDatabase.instance.removeSetting(key);
+    }
   }
 
   /// 清理 JSON Map 中的 apiKey 字段（去除旧 ENC: 前缀）。
@@ -1257,6 +1174,15 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> _saveDictationTermPendingCandidates() async {
+    await _saveSetting(
+      _dictationTermPendingCandidatesKey,
+      json.encode(
+        _dictationTermPendingCandidates.map((e) => e.toJson()).toList(),
+      ),
+    );
+  }
+
   /// 重建拼音索引（词典变更后调用）
   void _rebuildPinyinIndex() {
     _pinyinMatcher.buildIndex(_dictionaryEntries);
@@ -1267,6 +1193,301 @@ class SettingsProvider extends ChangeNotifier {
     await _saveDictionaryEntries();
     _rebuildPinyinIndex();
     notifyListeners();
+  }
+
+  Future<DictationTermPendingCandidate?> addOrMergeTermPendingCandidate({
+    required String original,
+    required String corrected,
+    String? category,
+    required double confidence,
+    String? sourceHistoryId,
+  }) async {
+    final normalizedOriginal = original.trim();
+    final normalizedCorrected = corrected.trim();
+    if (normalizedOriginal.isEmpty || normalizedCorrected.isEmpty) {
+      throw ArgumentError('original/corrected must not be empty');
+    }
+
+    for (final entry in _dictionaryEntries) {
+      if (entry.type == DictionaryEntryType.correction &&
+          entry.original.trim().toLowerCase() ==
+              normalizedOriginal.toLowerCase() &&
+          (entry.corrected ?? '').trim().toLowerCase() ==
+              normalizedCorrected.toLowerCase()) {
+        return null;
+      }
+    }
+
+    for (var i = 0; i < _dictationTermPendingCandidates.length; i++) {
+      final existing = _dictationTermPendingCandidates[i];
+      if (existing.original.toLowerCase() == normalizedOriginal.toLowerCase() &&
+          existing.corrected.toLowerCase() ==
+              normalizedCorrected.toLowerCase()) {
+        final merged = DictationTermPendingCandidate(
+          id: existing.id,
+          original: existing.original,
+          corrected: existing.corrected,
+          category: existing.category ?? category?.trim(),
+          confidence: confidence > existing.confidence
+              ? confidence
+              : existing.confidence,
+          occurrenceCount: existing.occurrenceCount + 1,
+          sourceHistoryId: sourceHistoryId ?? existing.sourceHistoryId,
+          createdAt: DateTime.now(),
+        );
+        _dictationTermPendingCandidates[i] = merged;
+        await _saveDictationTermPendingCandidates();
+        notifyListeners();
+        return merged;
+      }
+    }
+
+    final created = DictationTermPendingCandidate.create(
+      original: normalizedOriginal,
+      corrected: normalizedCorrected,
+      category: category,
+      confidence: confidence,
+      sourceHistoryId: sourceHistoryId,
+    );
+    _dictationTermPendingCandidates = [
+      created,
+      ..._dictationTermPendingCandidates,
+    ];
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+    return created;
+  }
+
+  Future<DictationTermPendingCandidate?> updateTermPendingCandidate({
+    required String id,
+    required String original,
+    required String corrected,
+    String? category,
+  }) async {
+    final normalizedOriginal = original.trim();
+    final normalizedCorrected = corrected.trim();
+    if (normalizedOriginal.isEmpty || normalizedCorrected.isEmpty) {
+      throw ArgumentError('original/corrected must not be empty');
+    }
+
+    final index = _dictationTermPendingCandidates.indexWhere(
+      (candidate) => candidate.id == id,
+    );
+    if (index < 0) return null;
+
+    final current = _dictationTermPendingCandidates[index];
+
+    for (final entry in _dictionaryEntries) {
+      if (entry.type == DictionaryEntryType.correction &&
+          entry.original.trim().toLowerCase() ==
+              normalizedOriginal.toLowerCase() &&
+          (entry.corrected ?? '').trim().toLowerCase() ==
+              normalizedCorrected.toLowerCase()) {
+        _dictationTermPendingCandidates.removeAt(index);
+        await _saveDictationTermPendingCandidates();
+        notifyListeners();
+        return null;
+      }
+    }
+
+    for (var i = 0; i < _dictationTermPendingCandidates.length; i++) {
+      if (i == index) continue;
+      final existing = _dictationTermPendingCandidates[i];
+      if (existing.original.toLowerCase() == normalizedOriginal.toLowerCase() &&
+          existing.corrected.toLowerCase() ==
+              normalizedCorrected.toLowerCase()) {
+        final merged = existing.copyWith(
+          category: existing.category ?? category?.trim() ?? current.category,
+          confidence: existing.confidence > current.confidence
+              ? existing.confidence
+              : current.confidence,
+          occurrenceCount: existing.occurrenceCount + current.occurrenceCount,
+          sourceHistoryId: current.sourceHistoryId ?? existing.sourceHistoryId,
+          createdAt: DateTime.now(),
+        );
+        _dictationTermPendingCandidates[i] = merged;
+        _dictationTermPendingCandidates.removeAt(index);
+        await _saveDictationTermPendingCandidates();
+        notifyListeners();
+        return merged;
+      }
+    }
+
+    final updated = current.copyWith(
+      original: normalizedOriginal,
+      corrected: normalizedCorrected,
+      category: (category == null || category.trim().isEmpty)
+          ? null
+          : category.trim(),
+      createdAt: DateTime.now(),
+    );
+    _dictationTermPendingCandidates[index] = updated;
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+    return updated;
+  }
+
+  Future<DictionaryEntry?> acceptTermPendingCandidate(String id) async {
+    DictationTermPendingCandidate? candidate;
+    for (final item in _dictationTermPendingCandidates) {
+      if (item.id == id) {
+        candidate = item;
+        break;
+      }
+    }
+    if (candidate == null) return null;
+
+    final entry = await upsertDictionaryCorrectionEntry(
+      original: candidate.original,
+      corrected: candidate.corrected,
+      category: candidate.category,
+      source: DictionaryEntrySource.historyEdit,
+    );
+    _dictationTermPendingCandidates.removeWhere((item) => item.id == id);
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+    return entry;
+  }
+
+  Future<List<DictionaryEntry>> acceptAllTermPendingCandidates() async {
+    if (_dictationTermPendingCandidates.isEmpty) {
+      return const [];
+    }
+
+    final acceptedEntries = <DictionaryEntry>[];
+    final snapshot = List<DictationTermPendingCandidate>.from(
+      _dictationTermPendingCandidates,
+    );
+    for (final candidate in snapshot) {
+      final entry = await upsertDictionaryCorrectionEntry(
+        original: candidate.original,
+        corrected: candidate.corrected,
+        category: candidate.category,
+        source: DictionaryEntrySource.historyEdit,
+      );
+      acceptedEntries.add(entry);
+    }
+    _dictationTermPendingCandidates.clear();
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+    return acceptedEntries;
+  }
+
+  Future<List<DictionaryEntry>> acceptTermPendingCandidates(
+    Iterable<String> ids,
+  ) async {
+    final targetIds = ids.toSet();
+    if (targetIds.isEmpty) {
+      return const [];
+    }
+
+    final snapshot = _dictationTermPendingCandidates
+        .where((candidate) => targetIds.contains(candidate.id))
+        .toList(growable: false);
+    if (snapshot.isEmpty) {
+      return const [];
+    }
+
+    final acceptedEntries = <DictionaryEntry>[];
+    for (final candidate in snapshot) {
+      final entry = await upsertDictionaryCorrectionEntry(
+        original: candidate.original,
+        corrected: candidate.corrected,
+        category: candidate.category,
+        source: DictionaryEntrySource.historyEdit,
+      );
+      acceptedEntries.add(entry);
+    }
+    _dictationTermPendingCandidates.removeWhere(
+      (candidate) => targetIds.contains(candidate.id),
+    );
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+    return acceptedEntries;
+  }
+
+  Future<void> rejectTermPendingCandidate(String id) async {
+    final hadCandidate = _dictationTermPendingCandidates.any(
+      (item) => item.id == id,
+    );
+    if (!hadCandidate) return;
+    _dictationTermPendingCandidates.removeWhere((item) => item.id == id);
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+  }
+
+  Future<void> rejectAllTermPendingCandidates() async {
+    if (_dictationTermPendingCandidates.isEmpty) return;
+    _dictationTermPendingCandidates.clear();
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+  }
+
+  Future<void> rejectTermPendingCandidates(Iterable<String> ids) async {
+    final targetIds = ids.toSet();
+    if (targetIds.isEmpty) return;
+    final hadCandidate = _dictationTermPendingCandidates.any(
+      (candidate) => targetIds.contains(candidate.id),
+    );
+    if (!hadCandidate) return;
+    _dictationTermPendingCandidates.removeWhere(
+      (candidate) => targetIds.contains(candidate.id),
+    );
+    await _saveDictationTermPendingCandidates();
+    notifyListeners();
+  }
+
+  Future<DictionaryEntry> upsertDictionaryCorrectionEntry({
+    required String original,
+    required String corrected,
+    String? category,
+    DictionaryEntrySource source = DictionaryEntrySource.manual,
+  }) async {
+    final normalizedOriginal = original.trim();
+    final normalizedCorrected = corrected.trim();
+    if (normalizedOriginal.isEmpty || normalizedCorrected.isEmpty) {
+      throw ArgumentError('original/corrected must not be empty');
+    }
+
+    for (final entry in _dictionaryEntries) {
+      if (entry.type == DictionaryEntryType.correction &&
+          entry.original.trim().toLowerCase() ==
+              normalizedOriginal.toLowerCase() &&
+          (entry.corrected ?? '').trim().toLowerCase() ==
+              normalizedCorrected.toLowerCase()) {
+        final enabledEntry = entry.enabled
+            ? entry
+            : entry.copyWith(enabled: true);
+        if (!identical(enabledEntry, entry)) {
+          await updateDictionaryEntry(enabledEntry);
+        }
+        return enabledEntry;
+      }
+    }
+
+    for (final entry in _dictionaryEntries) {
+      if (entry.type == DictionaryEntryType.correction &&
+          entry.original.trim().toLowerCase() ==
+              normalizedOriginal.toLowerCase()) {
+        final updated = entry.copyWith(
+          corrected: normalizedCorrected,
+          category: category ?? entry.category,
+          source: source,
+          enabled: true,
+        );
+        await updateDictionaryEntry(updated);
+        return updated;
+      }
+    }
+
+    final created = DictionaryEntry.create(
+      original: normalizedOriginal,
+      corrected: normalizedCorrected,
+      category: category,
+      source: source,
+    );
+    await addDictionaryEntry(created);
+    return created;
   }
 
   Future<void> updateDictionaryEntry(DictionaryEntry updated) async {
@@ -1612,6 +1833,15 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setHistoryContextEnhancementEnabled(bool enabled) async {
+    _historyContextEnhancementEnabled = enabled;
+    await _saveSetting(
+      _historyContextEnhancementEnabledKey,
+      enabled.toString(),
+    );
+    notifyListeners();
+  }
+
   Future<void> setLocalLlmIdleUnloadMinutes(int minutes) async {
     _localLlmIdleUnloadMinutes = minutes.clamp(0, 30);
     await _saveSetting(
@@ -1620,188 +1850,6 @@ class SettingsProvider extends ChangeNotifier {
     );
     await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
     notifyListeners();
-  }
-
-  Future<void> setSpeaker3dEnabled(bool enabled) async {
-    _speaker3dEnabled = enabled;
-    await _saveSetting(_speaker3dEnabledKey, enabled.toString());
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dModelPath(String path) async {
-    await addSpeaker3dModelPath(path, setActive: true);
-  }
-
-  Future<void> addSpeaker3dModelPath(
-    String path, {
-    bool setActive = true,
-  }) async {
-    final normalized = path.trim();
-    if (normalized.isEmpty) return;
-
-    _speaker3dModelPaths = [
-      normalized,
-      ..._speaker3dModelPaths.where((e) => e != normalized),
-    ];
-    if (setActive) {
-      _speaker3dModelPath = normalized;
-      await _saveSetting(_speaker3dModelPathKey, _speaker3dModelPath);
-    }
-    await _saveSetting(
-      _speaker3dModelPathsKey,
-      json.encode(_speaker3dModelPaths),
-    );
-    notifyListeners();
-  }
-
-  Future<void> setActiveSpeaker3dModelPath(String path) async {
-    final normalized = path.trim();
-    if (normalized.isEmpty || !_speaker3dModelPaths.contains(normalized)) {
-      return;
-    }
-    _speaker3dModelPath = normalized;
-    await _saveSetting(_speaker3dModelPathKey, _speaker3dModelPath);
-    notifyListeners();
-  }
-
-  Future<void> removeSpeaker3dModelPath(String path) async {
-    final normalized = path.trim();
-    if (normalized.isEmpty) return;
-
-    _speaker3dModelPaths = _speaker3dModelPaths
-        .where((e) => e != normalized)
-        .toList();
-    if (_speaker3dModelPath == normalized) {
-      _speaker3dModelPath = _speaker3dModelPaths.isNotEmpty
-          ? _speaker3dModelPaths.first
-          : '';
-      await _saveSetting(_speaker3dModelPathKey, _speaker3dModelPath);
-    }
-    await _saveSetting(
-      _speaker3dModelPathsKey,
-      json.encode(_speaker3dModelPaths),
-    );
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dMaxSpeakers(int value) async {
-    _speaker3dMaxSpeakers = value.clamp(1, 12);
-    if (_speaker3dMaxSpeakers > 1 && _speaker3dSingleSpeakerMode) {
-      _speaker3dSingleSpeakerMode = false;
-      await _saveSetting(_speaker3dSingleSpeakerModeKey, 'false');
-    }
-    await _saveSetting(
-      _speaker3dMaxSpeakersKey,
-      _speaker3dMaxSpeakers.toString(),
-    );
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dSingleSpeakerMode(bool enabled) async {
-    _speaker3dSingleSpeakerMode = enabled;
-    await _saveSetting(_speaker3dSingleSpeakerModeKey, enabled.toString());
-    if (enabled) {
-      _speaker3dMaxSpeakers = 1;
-      await _saveSetting(_speaker3dMaxSpeakersKey, '1');
-    }
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dOnlineBaseThreshold(double value) async {
-    _speaker3dOnlineBaseThreshold = value.clamp(0.5, 0.95).toDouble();
-    await _saveSetting(
-      _speaker3dOnlineBaseThresholdKey,
-      _speaker3dOnlineBaseThreshold.toStringAsFixed(2),
-    );
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dTop1Top2Margin(double value) async {
-    _speaker3dTop1Top2Margin = value.clamp(0.0, 0.20).toDouble();
-    await _saveSetting(
-      _speaker3dTop1Top2MarginKey,
-      _speaker3dTop1Top2Margin.toStringAsFixed(2),
-    );
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dOfflineMergeThreshold(double value) async {
-    _speaker3dOfflineMergeThreshold = value.clamp(0.5, 0.95).toDouble();
-    await _saveSetting(
-      _speaker3dOfflineMergeThresholdKey,
-      _speaker3dOfflineMergeThreshold.toStringAsFixed(2),
-    );
-    notifyListeners();
-  }
-
-  Future<void> applySpeaker3dPreset(String preset) async {
-    switch (preset) {
-      case speaker3dPresetConsistency:
-        _speaker3dSingleSpeakerMode = false;
-        _speaker3dMaxSpeakers = 2;
-        _speaker3dOnlineBaseThreshold = 0.72;
-        _speaker3dTop1Top2Margin = 0.01;
-        _speaker3dOfflineMergeThreshold = 0.72;
-        break;
-      case speaker3dPresetSeparation:
-        _speaker3dSingleSpeakerMode = false;
-        _speaker3dMaxSpeakers = 8;
-        _speaker3dOnlineBaseThreshold = 0.84;
-        _speaker3dTop1Top2Margin = 0.06;
-        _speaker3dOfflineMergeThreshold = 0.84;
-        break;
-      case speaker3dPresetBalanced:
-      default:
-        _speaker3dSingleSpeakerMode = false;
-        _speaker3dMaxSpeakers = 6;
-        _speaker3dOnlineBaseThreshold = 0.78;
-        _speaker3dTop1Top2Margin = 0.04;
-        _speaker3dOfflineMergeThreshold = 0.80;
-        break;
-    }
-
-    await _saveSetting(
-      _speaker3dSingleSpeakerModeKey,
-      _speaker3dSingleSpeakerMode.toString(),
-    );
-    await _saveSetting(
-      _speaker3dMaxSpeakersKey,
-      _speaker3dMaxSpeakers.toString(),
-    );
-    await _saveSetting(
-      _speaker3dOnlineBaseThresholdKey,
-      _speaker3dOnlineBaseThreshold.toStringAsFixed(2),
-    );
-    await _saveSetting(
-      _speaker3dTop1Top2MarginKey,
-      _speaker3dTop1Top2Margin.toStringAsFixed(2),
-    );
-    await _saveSetting(
-      _speaker3dOfflineMergeThresholdKey,
-      _speaker3dOfflineMergeThreshold.toStringAsFixed(2),
-    );
-    notifyListeners();
-  }
-
-  Future<void> setSpeaker3dDownloadSourceMode(String mode) async {
-    _speaker3dDownloadSourceMode = _normalizeSpeaker3dDownloadSourceMode(mode);
-    await _saveSetting(
-      _speaker3dDownloadSourceModeKey,
-      _speaker3dDownloadSourceMode,
-    );
-    notifyListeners();
-  }
-
-  String _normalizeSpeaker3dDownloadSourceMode(String mode) {
-    final normalized = mode.trim().toLowerCase();
-    switch (normalized) {
-      case _speaker3dDownloadSourceModeDirect:
-      case _speaker3dDownloadSourceModeMirror:
-      case _speaker3dDownloadSourceModeAuto:
-        return normalized;
-      default:
-        return _speaker3dDownloadSourceModeAuto;
-    }
   }
 
   bool _containsChinese(String text) {

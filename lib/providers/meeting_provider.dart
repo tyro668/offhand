@@ -502,7 +502,7 @@ class MeetingProvider extends ChangeNotifier {
         segments.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
 
         final mergedText = segments
-            .map((s) => s.displayTextWithSpeaker.trim())
+            .map((s) => (s.displayText ?? '').trim())
             .where((text) => text.isNotEmpty)
             .join('\n')
             .trim();
@@ -561,12 +561,6 @@ class MeetingProvider extends ChangeNotifier {
     required SttProviderConfig sttConfig,
     AiEnhanceConfig? aiConfig,
     bool aiEnhanceEnabled = false,
-    bool speaker3dEnabled = true,
-    String speaker3dModelPath = '',
-    int speaker3dMaxSpeakers = 6,
-    double speaker3dOnlineBaseThreshold = 0.78,
-    double speaker3dTop1Top2Margin = 0.04,
-    double speaker3dOfflineMergeThreshold = 0.80,
     int? segmentSeconds,
     int windowSize = 5,
     String dictionarySuffix = '',
@@ -606,12 +600,6 @@ class MeetingProvider extends ChangeNotifier {
         sttConfig: sttConfig,
         aiConfig: aiConfig,
         aiEnhanceEnabled: aiEnhanceEnabled,
-        speaker3dEnabled: speaker3dEnabled,
-        speaker3dModelPath: speaker3dModelPath,
-        speaker3dMaxSpeakers: speaker3dMaxSpeakers,
-        speaker3dOnlineBaseThreshold: speaker3dOnlineBaseThreshold,
-        speaker3dTop1Top2Margin: speaker3dTop1Top2Margin,
-        speaker3dOfflineMergeThreshold: speaker3dOfflineMergeThreshold,
         segmentSeconds: segmentSeconds,
         windowSize: windowSize,
         pinyinMatcher: pinyinMatcher,
@@ -747,7 +735,7 @@ class MeetingProvider extends ChangeNotifier {
       );
       final immediateBuffer = StringBuffer();
       for (final seg in persistedSegments) {
-        final text = seg.displayTextWithSpeaker.trim();
+        final text = (seg.displayText ?? '').trim();
         if (text.isNotEmpty) {
           immediateBuffer.writeln(text);
         }
@@ -829,7 +817,7 @@ class MeetingProvider extends ChangeNotifier {
 
       final buffer = StringBuffer();
       for (final seg in segments) {
-        final text = seg.displayTextWithSpeaker.trim();
+        final text = (seg.displayText ?? '').trim();
         if (text.isNotEmpty) {
           buffer.writeln(text);
         }
@@ -838,7 +826,7 @@ class MeetingProvider extends ChangeNotifier {
       final hasCachedMerged = cachedFullText.isNotEmpty;
       final tailText = segments
           .where((s) => s.segmentIndex > cachedLastCoveredIndex)
-          .map((s) => s.displayTextWithSpeaker.trim())
+          .map((s) => (s.displayText ?? '').trim())
           .where((text) => text.isNotEmpty)
           .join('\n');
 
@@ -929,7 +917,7 @@ class MeetingProvider extends ChangeNotifier {
       latest.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
 
       final hasText = latest.any(
-        (segment) => segment.displayTextWithSpeaker.trim().isNotEmpty,
+        (segment) => (segment.displayText ?? '').trim().isNotEmpty,
       );
       final hasPending = latest.any(
         (segment) =>
@@ -977,7 +965,7 @@ class MeetingProvider extends ChangeNotifier {
 
       final buffer = StringBuffer();
       for (final seg in segments) {
-        final text = seg.displayTextWithSpeaker.trim();
+        final text = (seg.displayText ?? '').trim();
         if (text.isNotEmpty) {
           buffer.writeln(text);
         }

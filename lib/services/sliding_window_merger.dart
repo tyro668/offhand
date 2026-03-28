@@ -63,7 +63,7 @@ class SlidingWindowMerger {
   SlidingWindowMerger({required this.windowSize, required this.aiConfig});
 
   String _segmentDisplayText(MeetingSegment segment) {
-    return segment.displayTextWithSpeaker.trim();
+    return (segment.displayText ?? '').trim();
   }
 
   /// 当新分段完成转写时调用，触发窗口选取和合并。

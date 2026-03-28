@@ -9,7 +9,6 @@
 
   "generalSettings": "General",
   "voiceModelSettings": "Voice Model",
-  "speakerModelSettings": "Speaker Model",
   "textModelSettings": "Text Model",
   "promptWorkshop": "Prompt Settings",
   "aiEnhanceHub": "AI Enhancement",
@@ -230,65 +229,6 @@
     "placeholders": {
       "value": {
         "type": "int"
-      }
-    }
-  },
-
-  "speakerModelTitle": "Meeting speaker ID (3D-Speaker)",
-  "speakerModelDescription": "Use local 3D-Speaker model for diarization with configurable max speakers and model path",
-  "speakerModelEnable": "Enable 3D-Speaker",
-  "speakerModelHeaderTitle": "3D-Speaker Voice Recognition",
-  "speakerModelHeaderSubtitle": "High-accuracy speaker diarization and recognition engine",
-  "speakerModelBasicSettings": "Basic Settings",
-  "speakerModelAlgorithmParams": "Algorithm Parameters",
-  "speakerModelManagement": "Speaker Model Management",
-  "speakerModelImportLocal": "Import Local Model",
-  "speakerModelSingleSpeakerMode": "Single-speaker presentation mode",
-  "speakerModelSingleSpeakerModeDesc": "Force all segments to one speaker label for solo talks",
-  "speakerModelMaxSpeakers": "Max speakers",
-  "speakerModelMaxSpeakersDesc": "Upper bound for speaker clusters in one meeting",
-  "speakerModelPresetTitle": "One-click presets",
-  "speakerModelPresetConsistency": "Consistency first",
-  "speakerModelPresetBalanced": "Balanced",
-  "speakerModelPresetSeparation": "Separation first",
-  "speakerModelOnlineBaseThreshold": "Online base threshold",
-  "speakerModelOnlineBaseThresholdDesc": "Lower value merges more aggressively, higher value splits more easily",
-  "speakerModelTop1Top2Margin": "Top1-Top2 margin",
-  "speakerModelTop1Top2MarginDesc": "Smaller margin accepts best match more often, improving continuity",
-  "speakerModelOfflineMergeThreshold": "Offline merge threshold",
-  "speakerModelOfflineMergeThresholdDesc": "Lower value merges clusters after meeting, higher value keeps them separate",
-  "speakerModelPathNotSet": "Model path not set (default paths will be tried)",
-  "speakerModelPickModel": "Pick model",
-  "speakerModelDownloading": "Downloading...",
-  "speakerModelDownloadDefault": "Download default",
-  "speakerModelDownloadSource": "Download source",
-  "speakerModelDownloadSourceAuto": "Auto",
-  "speakerModelDownloadSourceDirect": "Direct only",
-  "speakerModelDownloadSourceMirror": "Mirror only",
-  "speakerModelReady": "Model file ready",
-  "speakerModelMissing": "Model file not found, please re-select",
-  "speakerModelDefaultLookup": "Default search: <app>/models/3d-speaker/model.onnx",
-  "speakerModelDownloaded": "3D-Speaker model downloaded",
-  "speakerModelDownloadFailed": "Download failed. Check network or pick an ONNX model manually",
-  "speakerModelDownloadStatusKnown": "Downloaded {downloaded} / {total} ({percent}%)",
-  "@speakerModelDownloadStatusKnown": {
-    "placeholders": {
-      "downloaded": {
-        "type": "String"
-      },
-      "total": {
-        "type": "String"
-      },
-      "percent": {
-        "type": "String"
-      }
-    }
-  },
-  "speakerModelDownloadStatusUnknown": "Downloaded {downloaded} (total size unknown)",
-  "@speakerModelDownloadStatusUnknown": {
-    "placeholders": {
-      "downloaded": {
-        "type": "String"
       }
     }
   },

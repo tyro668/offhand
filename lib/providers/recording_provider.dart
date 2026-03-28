@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../database/app_database.dart';
 import '../models/transcription.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/provider_config.dart';
@@ -19,12 +20,14 @@ import '../services/correction_context.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/session_glossary.dart';
 import '../services/correction_stats_service.dart';
+import '../services/context_recall_service.dart';
 
 enum RecordingState { idle, recording, transcribing }
 
 class RecordingProvider extends ChangeNotifier {
   static const Duration _segmentDuration = Duration(seconds: 10);
   static const String _overlayOwner = 'dictation';
+  static const String _editedHistoryIdsKey = 'edited_history_ids_v1';
 
   final AudioRecorderService _recorder = AudioRecorderService();
   final HistoryDb _historyDb = HistoryDb.instance;
@@ -40,6 +43,7 @@ class RecordingProvider extends ChangeNotifier {
   Timer? _segmentTimer;
   StreamSubscription<double>? _amplitudeSub;
   final List<Transcription> _history = [];
+  final Set<String> _editedHistoryIds = {};
   Completer<void>? _stopCompleter;
   Completer<void>? _segmentDrainCompleter;
   VadService? _vadService;
@@ -59,6 +63,8 @@ class RecordingProvider extends ChangeNotifier {
   CorrectionService? _correctionService;
   final CorrectionContext _correctionContext = CorrectionContext();
   final SessionGlossary _sessionGlossary = SessionGlossary();
+  static const ContextRecallService _contextRecallService =
+      ContextRecallService();
   bool _retrospectiveCorrectionEnabled = false;
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
@@ -126,6 +132,7 @@ class RecordingProvider extends ChangeNotifier {
   Duration get recordingDuration => _recordingDuration;
   List<Transcription> get history => List.unmodifiable(_history);
   Stream<double> get amplitudeStream => _recorder.amplitudeStream;
+  bool isHistoryEdited(String id) => _editedHistoryIds.contains(id);
 
   void setOverlayStateLabels({
     required String starting,
@@ -453,6 +460,7 @@ class RecordingProvider extends ChangeNotifier {
     SttProviderConfig config, {
     bool aiEnhanceEnabled = false,
     AiEnhanceConfig? aiEnhanceConfig,
+    bool historyContextEnhancementEnabled = false,
     int minRecordingSeconds = 3,
     bool useStreaming = false,
   }) async {
@@ -502,6 +510,7 @@ class RecordingProvider extends ChangeNotifier {
           duration,
           aiEnhanceEnabled: aiEnhanceEnabled,
           aiEnhanceConfig: aiEnhanceConfig,
+          historyContextEnhancementEnabled: historyContextEnhancementEnabled,
           useStreaming: useStreaming,
         ),
       );
@@ -525,6 +534,7 @@ class RecordingProvider extends ChangeNotifier {
     Duration duration, {
     required bool aiEnhanceEnabled,
     required AiEnhanceConfig? aiEnhanceConfig,
+    required bool historyContextEnhancementEnabled,
     bool useStreaming = false,
   }) async {
     final sw = Stopwatch()..start();
@@ -650,6 +660,7 @@ class RecordingProvider extends ChangeNotifier {
         duration,
         aiEnhanceEnabled: aiEnhanceEnabled,
         aiEnhanceConfig: aiEnhanceConfig,
+        historyContextEnhancementEnabled: historyContextEnhancementEnabled,
         useStreaming: useStreaming,
       );
     } catch (e) {
@@ -689,6 +700,7 @@ class RecordingProvider extends ChangeNotifier {
     Duration duration, {
     required bool aiEnhanceEnabled,
     required AiEnhanceConfig? aiEnhanceConfig,
+    required bool historyContextEnhancementEnabled,
     bool useStreaming = false,
   }) async {
     final sw = Stopwatch()..start();
@@ -709,7 +721,23 @@ class RecordingProvider extends ChangeNotifier {
               owner: _overlayOwner,
             ),
           );
-          final enhancer = AiEnhanceService(aiEnhanceConfig);
+          var effectiveEnhanceConfig = aiEnhanceConfig;
+          if (historyContextEnhancementEnabled) {
+            final contextHints = _contextRecallService.recall(
+              currentText: rawText,
+              history: _history,
+            );
+            if (contextHints.hasContent) {
+              effectiveEnhanceConfig = aiEnhanceConfig.copyWith(
+                prompt: aiEnhanceConfig.prompt + contextHints.toPromptSuffix(),
+              );
+              await LogService.info(
+                'TRANSCRIBE',
+                'history context injected: refs=${contextHints.referenceTexts.length} topic=${contextHints.recentTopic ?? '-'} style=${contextHints.recentStyle ?? '-'}',
+              );
+            }
+          }
+          final enhancer = AiEnhanceService(effectiveEnhanceConfig);
 
           if (useStreaming) {
             // Streaming mode: show text in real-time on overlay
@@ -841,10 +869,32 @@ class RecordingProvider extends ChangeNotifier {
       _history
         ..clear()
         ..addAll(items);
+      final raw = await AppDatabase.instance.getSetting(_editedHistoryIdsKey);
+      _editedHistoryIds
+        ..clear()
+        ..addAll(_decodeEditedHistoryIds(raw));
       notifyListeners();
     } catch (e) {
       // ignore
     }
+  }
+
+  Set<String> _decodeEditedHistoryIds(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return <String>{};
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is List) {
+        return decoded.whereType<String>().map((e) => e.trim()).toSet();
+      }
+    } catch (_) {}
+    return <String>{};
+  }
+
+  Future<void> _saveEditedHistoryIds() async {
+    await AppDatabase.instance.setSetting(
+      _editedHistoryIdsKey,
+      json.encode(_editedHistoryIds.toList()..sort()),
+    );
   }
 
   void clearText() {
@@ -859,12 +909,39 @@ class RecordingProvider extends ChangeNotifier {
 
   void removeHistory(int index) {
     final item = _history.removeAt(index);
+    _editedHistoryIds.remove(item.id);
+    unawaited(_saveEditedHistoryIds());
     _historyDb.deleteById(item.id);
+    notifyListeners();
+  }
+
+  Future<void> updateHistoryText(String id, String text) async {
+    final index = _history.indexWhere((item) => item.id == id);
+    if (index < 0) return;
+
+    final current = _history[index];
+    final updated = Transcription(
+      id: current.id,
+      text: text.trim(),
+      rawText: current.rawText,
+      createdAt: current.createdAt,
+      duration: current.duration,
+      provider: current.provider,
+      model: current.model,
+      providerConfigJson: current.providerConfigJson,
+    );
+
+    _history[index] = updated;
+    _editedHistoryIds.add(id);
+    await _saveEditedHistoryIds();
+    await _historyDb.insert(updated);
     notifyListeners();
   }
 
   void clearAllHistory() {
     _history.clear();
+    _editedHistoryIds.clear();
+    unawaited(_saveEditedHistoryIds());
     _historyDb.clear();
     notifyListeners();
   }

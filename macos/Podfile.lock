@@ -4,7 +4,7 @@ PODS:
   - FlutterMacOS (1.0.0)
   - record_macos (1.2.0):
     - FlutterMacOS
-  - sherpa_onnx_macos (1.12.28):
+  - sherpa_onnx_macos (1.12.34):
     - FlutterMacOS
   - sqflite_darwin (0.0.4):
     - Flutter
@@ -43,7 +43,7 @@ SPEC CHECKSUMS:
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   record_macos: 7f227161b93c49e7e34fe681c5891c8622c8cc8b
-  sherpa_onnx_macos: f588e127ac6b1ad89cb6fa004baea930f33a16df
+  sherpa_onnx_macos: 3d37f232617f0d1d1e7e62f62fd7ec0661be7546
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
   whisper_flutter_new: d73daf7f6977167139555f841bd5b6bfbf4f9e3b

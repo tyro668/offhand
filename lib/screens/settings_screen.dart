@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'pages/general_page.dart';
 import 'pages/stt_page.dart';
-import 'pages/speaker_model_page.dart';
 import 'pages/ai_model_page.dart';
 import 'pages/ai_enhance_hub_page.dart';
 import 'pages/system_settings_page.dart';
@@ -24,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex.clamp(0, 6);
+    _selectedIndex = widget.initialIndex.clamp(0, 5);
   }
 
   ColorScheme get _cs => Theme.of(context).colorScheme;
@@ -32,10 +31,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<_SettingsNavItem> _getItems(AppLocalizations l10n) => [
     _SettingsNavItem(icon: Icons.tune_outlined, label: l10n.generalSettings),
     _SettingsNavItem(icon: Icons.mic_outlined, label: l10n.voiceModelSettings),
-    _SettingsNavItem(
-      icon: Icons.record_voice_over_outlined,
-      label: l10n.speakerModelSettings,
-    ),
     _SettingsNavItem(
       icon: Icons.psychology_outlined,
       label: l10n.textModelSettings,
@@ -52,11 +47,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return switch (_selectedIndex) {
       0 => const GeneralPage(),
       1 => const SttPage(),
-      2 => const SpeakerModelPage(),
-      3 => const AiModelPage(),
-      4 => const AiEnhanceHubPage(),
-      5 => const SystemSettingsPage(),
-      6 => const AboutPage(),
+      2 => const AiModelPage(),
+      3 => const AiEnhanceHubPage(),
+      4 => const SystemSettingsPage(),
+      5 => const AboutPage(),
       _ => const SizedBox(),
     };
   }

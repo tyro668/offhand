@@ -10,6 +10,8 @@ enum DictionaryEntryType {
   preserve,
 }
 
+enum DictionaryEntrySource { manual, historyEdit }
+
 /// 词典条目 — 用于指导 AI 模型进行文字纠正和术语保留。
 class DictionaryEntry {
   final String id;
@@ -22,6 +24,9 @@ class DictionaryEntry {
 
   /// 分类标签，如 "人名"、"术语"、"品牌" 等
   final String? category;
+
+  /// 条目来源，区分用户手动添加与历史修正回流。
+  final DictionaryEntrySource source;
 
   /// 是否启用
   final bool enabled;
@@ -41,6 +46,7 @@ class DictionaryEntry {
     required this.original,
     this.corrected,
     this.category,
+    this.source = DictionaryEntrySource.manual,
     this.enabled = true,
     this.pinyinOverride,
     this.pinyinPattern,
@@ -97,6 +103,7 @@ class DictionaryEntry {
     required String original,
     String? corrected,
     String? category,
+    DictionaryEntrySource source = DictionaryEntrySource.manual,
     bool enabled = true,
     String? pinyinOverride,
     String? pinyinPattern,
@@ -111,6 +118,7 @@ class DictionaryEntry {
       original: normalizedOriginal,
       corrected: corrected,
       category: category,
+      source: source,
       enabled: enabled,
       pinyinOverride: pinyinOverride,
       pinyinPattern: normalizedPattern,
@@ -123,6 +131,7 @@ class DictionaryEntry {
     'original': original,
     'corrected': corrected,
     'category': category,
+    'source': source.name,
     'enabled': enabled,
     'pinyinOverride': pinyinOverride,
     'pinyinPattern': pinyinPattern,
@@ -141,6 +150,10 @@ class DictionaryEntry {
       original: original,
       corrected: corrected,
       category: json['category'] as String?,
+      source: _parseSource(
+        json['source'] as String?,
+        legacyCategory: json['category'] as String?,
+      ),
       enabled: json['enabled'] as bool? ?? true,
       pinyinOverride: json['pinyinOverride'] as String?,
       pinyinPattern:
@@ -155,6 +168,7 @@ class DictionaryEntry {
     String? original,
     String? corrected,
     String? category,
+    DictionaryEntrySource? source,
     bool? enabled,
     String? pinyinOverride,
     String? pinyinPattern,
@@ -164,6 +178,7 @@ class DictionaryEntry {
       original: original ?? this.original,
       corrected: corrected ?? this.corrected,
       category: category ?? this.category,
+      source: source ?? this.source,
       enabled: enabled ?? this.enabled,
       pinyinOverride: pinyinOverride ?? this.pinyinOverride,
       pinyinPattern: pinyinPattern ?? this.pinyinPattern,
@@ -178,6 +193,7 @@ class DictionaryEntry {
       original: original,
       corrected: null,
       category: category,
+      source: source,
       enabled: enabled,
       pinyinOverride: pinyinOverride,
       pinyinPattern: pinyinPattern,
@@ -192,6 +208,7 @@ class DictionaryEntry {
       original: original,
       corrected: corrected,
       category: category,
+      source: source,
       enabled: enabled,
       pinyinOverride: null,
       pinyinPattern: pinyinPattern,
@@ -205,10 +222,22 @@ class DictionaryEntry {
       original: original,
       corrected: corrected,
       category: category,
+      source: source,
       enabled: enabled,
       pinyinOverride: pinyinOverride,
       pinyinPattern: null,
       createdAt: createdAt,
     );
+  }
+
+  static DictionaryEntrySource _parseSource(
+    String? raw, {
+    String? legacyCategory,
+  }) {
+    if ((raw ?? '').trim() == DictionaryEntrySource.historyEdit.name ||
+        legacyCategory == '历史修正') {
+      return DictionaryEntrySource.historyEdit;
+    }
+    return DictionaryEntrySource.manual;
   }
 }

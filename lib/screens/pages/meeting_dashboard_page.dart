@@ -1020,11 +1020,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       );
     }
 
-    final text = segment.displayTextWithoutSpeaker;
-    final speaker = MeetingSegment.speakerLabel(
-      segment.detectedSpeakerId,
-      userFormatter: l10n.userLabel,
-    );
+    final text = (segment.displayText ?? '').trim();
     if (text.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1041,31 +1037,9 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (speaker.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: _cs.secondaryContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                speaker,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: _cs.onSecondaryContainer,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          SelectableText(
-            text,
-            style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
-          ),
-        ],
+      child: SelectableText(
+        text,
+        style: TextStyle(fontSize: 14, color: _cs.onSurface, height: 1.6),
       ),
     );
   }

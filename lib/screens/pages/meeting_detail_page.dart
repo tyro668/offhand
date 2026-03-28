@@ -78,7 +78,7 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
       );
       segments.sort((a, b) => a.segmentIndex.compareTo(b.segmentIndex));
       final fallback = segments
-          .map((s) => s.displayTextWithSpeaker.trim())
+          .map((s) => (s.displayText ?? '').trim())
           .where((t) => t.isNotEmpty)
           .join('\n');
       if (fallback.isNotEmpty) {
