@@ -12,6 +12,7 @@ import '../models/merged_note.dart';
 import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/term_context_entry.dart';
+import '../models/transcription.dart';
 import '../services/meeting_recording_service.dart';
 import '../services/meeting_export_service.dart';
 import '../services/ai_enhance_service.dart';
@@ -20,6 +21,8 @@ import '../services/log_service.dart';
 import '../services/token_stats_service.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/incremental_summary_service.dart';
+import '../services/session_glossary.dart';
+import '../services/term_prompt_builder.dart';
 
 /// 会议记录状态管理
 class MeetingProvider extends ChangeNotifier {
@@ -75,6 +78,13 @@ class MeetingProvider extends ChangeNotifier {
 
   /// 词典提示词后缀（会议期间保留，追加到各专用 prompt 后）
   String _dictionarySuffix = '';
+  List<DictionaryEntry> _dictionaryEntries = const [];
+  List<TermContextEntry> _termContextEntries = const [];
+  List<Transcription> _historyEntries = const [];
+  List<EntityMemory> _entityMemories = const [];
+  List<EntityAlias> _entityAliases = const [];
+  List<EntityRelation> _entityRelations = const [];
+  final TermPromptBuilder _termPromptBuilder = const TermPromptBuilder();
 
   /// 事件流订阅
   StreamSubscription<MeetingSegment>? _segmentReadySub;
@@ -482,6 +492,12 @@ class MeetingProvider extends ChangeNotifier {
   Future<int> rebuildHistoricalMeetingsFromSegments({
     required AiEnhanceConfig aiConfig,
     String dictionarySuffix = '',
+    List<DictionaryEntry> dictionaryEntries = const [],
+    List<TermContextEntry> termContextEntries = const [],
+    List<Transcription> historyEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
   }) async {
     final meetings = await AppDatabase.instance.getAllMeetings();
     var updatedCount = 0;
@@ -489,10 +505,22 @@ class MeetingProvider extends ChangeNotifier {
     final oldEnabled = _aiEnhanceEnabled;
     final oldConfig = _aiConfig;
     final oldDictSuffix = _dictionarySuffix;
+    final oldDictionaryEntries = _dictionaryEntries;
+    final oldTermContextEntries = _termContextEntries;
+    final oldHistoryEntries = _historyEntries;
+    final oldEntityMemories = _entityMemories;
+    final oldEntityAliases = _entityAliases;
+    final oldEntityRelations = _entityRelations;
 
     _aiEnhanceEnabled = true;
     _aiConfig = aiConfig;
     _dictionarySuffix = dictionarySuffix;
+    _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
+    _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+    _historyEntries = List<Transcription>.from(historyEntries);
+    _entityMemories = List<EntityMemory>.from(entityMemories);
+    _entityAliases = List<EntityAlias>.from(entityAliases);
+    _entityRelations = List<EntityRelation>.from(entityRelations);
 
     try {
       for (final meeting in meetings) {
@@ -549,6 +577,12 @@ class MeetingProvider extends ChangeNotifier {
       _aiEnhanceEnabled = oldEnabled;
       _aiConfig = oldConfig;
       _dictionarySuffix = oldDictSuffix;
+      _dictionaryEntries = oldDictionaryEntries;
+      _termContextEntries = oldTermContextEntries;
+      _historyEntries = oldHistoryEntries;
+      _entityMemories = oldEntityMemories;
+      _entityAliases = oldEntityAliases;
+      _entityRelations = oldEntityRelations;
     }
 
     await _loadMeetings();
@@ -583,6 +617,7 @@ class MeetingProvider extends ChangeNotifier {
     String dictionarySuffix = '',
     List<DictionaryEntry> dictionaryEntries = const [],
     List<TermContextEntry> termContextEntries = const [],
+    List<Transcription> historyEntries = const [],
     List<EntityMemory> entityMemories = const [],
     List<EntityAlias> entityAliases = const [],
     List<EntityRelation> entityRelations = const [],
@@ -596,6 +631,12 @@ class MeetingProvider extends ChangeNotifier {
     _aiConfig = aiConfig;
     _aiEnhanceEnabled = aiEnhanceEnabled;
     _dictionarySuffix = dictionarySuffix;
+    _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
+    _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+    _historyEntries = List<Transcription>.from(historyEntries);
+    _entityMemories = List<EntityMemory>.from(entityMemories);
+    _entityAliases = List<EntityAlias>.from(entityAliases);
+    _entityRelations = List<EntityRelation>.from(entityRelations);
 
     // 重置合并纪要状态
     _mergedNote = '';
@@ -626,6 +667,7 @@ class MeetingProvider extends ChangeNotifier {
         windowSize: windowSize,
         dictionaryEntries: dictionaryEntries,
         termContextEntries: termContextEntries,
+        historyEntries: historyEntries,
         entityMemories: entityMemories,
         entityAliases: entityAliases,
         entityRelations: entityRelations,
@@ -1050,9 +1092,13 @@ class MeetingProvider extends ChangeNotifier {
         'assets/prompts/meeting_merge_prompt.md',
       );
 
+      final memoryPromptSuffix = _buildMeetingMemoryPromptSuffix(
+        currentText: rawText,
+      );
+
       // 使用会议合并提示词覆盖默认提示词，并追加词典后缀
       final mergeConfig = _aiConfig!.copyWith(
-        prompt: mergePrompt + _dictionarySuffix,
+        prompt: mergePrompt + _dictionarySuffix + memoryPromptSuffix,
       );
       final enhancer = AiEnhanceService(mergeConfig);
       final result = await enhancer.enhance(
@@ -1097,8 +1143,12 @@ class MeetingProvider extends ChangeNotifier {
         'assets/prompts/meeting_summary_prompt.md',
       );
 
+      final memoryPromptSuffix = _buildMeetingMemoryPromptSuffix(
+        currentText: content,
+      );
+
       final summaryConfig = _aiConfig!.copyWith(
-        prompt: summaryPrompt + _dictionarySuffix,
+        prompt: summaryPrompt + _dictionarySuffix + memoryPromptSuffix,
       );
       final enhancer = AiEnhanceService(summaryConfig);
       final result = await enhancer.enhance(
@@ -1139,6 +1189,12 @@ class MeetingProvider extends ChangeNotifier {
     String? content,
     AiEnhanceConfig? aiConfig,
     String dictionarySuffix = '',
+    List<DictionaryEntry> dictionaryEntries = const [],
+    List<TermContextEntry> termContextEntries = const [],
+    List<Transcription> historyEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
   }) async {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return false;
@@ -1153,10 +1209,22 @@ class MeetingProvider extends ChangeNotifier {
     final oldEnabled = _aiEnhanceEnabled;
     final oldConfig = _aiConfig;
     final oldDictSuffix = _dictionarySuffix;
+    final oldDictionaryEntries = _dictionaryEntries;
+    final oldTermContextEntries = _termContextEntries;
+    final oldHistoryEntries = _historyEntries;
+    final oldEntityMemories = _entityMemories;
+    final oldEntityAliases = _entityAliases;
+    final oldEntityRelations = _entityRelations;
     try {
       _aiEnhanceEnabled = true;
       _aiConfig = config;
       _dictionarySuffix = dictionarySuffix;
+      _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
+      _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+      _historyEntries = List<Transcription>.from(historyEntries);
+      _entityMemories = List<EntityMemory>.from(entityMemories);
+      _entityAliases = List<EntityAlias>.from(entityAliases);
+      _entityRelations = List<EntityRelation>.from(entityRelations);
 
       final summary = await _generateSummary(mergedContent);
       if (summary.isEmpty) return false;
@@ -1171,6 +1239,12 @@ class MeetingProvider extends ChangeNotifier {
       _aiEnhanceEnabled = oldEnabled;
       _aiConfig = oldConfig;
       _dictionarySuffix = oldDictSuffix;
+      _dictionaryEntries = oldDictionaryEntries;
+      _termContextEntries = oldTermContextEntries;
+      _historyEntries = oldHistoryEntries;
+      _entityMemories = oldEntityMemories;
+      _entityAliases = oldEntityAliases;
+      _entityRelations = oldEntityRelations;
     }
   }
 
@@ -1200,12 +1274,31 @@ class MeetingProvider extends ChangeNotifier {
     required String content,
     required AiEnhanceConfig aiConfig,
     String dictionarySuffix = '',
+    List<DictionaryEntry> dictionaryEntries = const [],
+    List<TermContextEntry> termContextEntries = const [],
+    List<Transcription> historyEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
   }) async* {
     final meeting = await AppDatabase.instance.getMeetingById(meetingId);
     if (meeting == null) return;
 
     final mergedContent = content.trim();
     if (mergedContent.isEmpty) return;
+
+    final oldDictionaryEntries = _dictionaryEntries;
+    final oldTermContextEntries = _termContextEntries;
+    final oldHistoryEntries = _historyEntries;
+    final oldEntityMemories = _entityMemories;
+    final oldEntityAliases = _entityAliases;
+    final oldEntityRelations = _entityRelations;
+    _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
+    _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+    _historyEntries = List<Transcription>.from(historyEntries);
+    _entityMemories = List<EntityMemory>.from(entityMemories);
+    _entityAliases = List<EntityAlias>.from(entityAliases);
+    _entityRelations = List<EntityRelation>.from(entityRelations);
 
     await LogService.info(
       'MEETING',
@@ -1215,35 +1308,47 @@ class MeetingProvider extends ChangeNotifier {
     final summaryPrompt = await rootBundle.loadString(
       'assets/prompts/meeting_summary_prompt.md',
     );
-
-    final summaryConfig = aiConfig.copyWith(
-      prompt: summaryPrompt + dictionarySuffix,
+    final memoryPromptSuffix = _buildMeetingMemoryPromptSuffix(
+      currentText: mergedContent,
     );
-    final enhancer = AiEnhanceService(summaryConfig);
 
-    final buffer = StringBuffer();
-    await for (final chunk in enhancer.enhanceStream(
-      mergedContent,
-      timeout: const Duration(seconds: 120),
-    )) {
-      buffer.write(chunk);
-      yield chunk;
+    try {
+      final summaryConfig = aiConfig.copyWith(
+        prompt: summaryPrompt + dictionarySuffix + memoryPromptSuffix,
+      );
+      final enhancer = AiEnhanceService(summaryConfig);
+
+      final buffer = StringBuffer();
+      await for (final chunk in enhancer.enhanceStream(
+        mergedContent,
+        timeout: const Duration(seconds: 120),
+      )) {
+        buffer.write(chunk);
+        yield chunk;
+      }
+
+      // 流式结束后持久化
+      final fullSummary = buffer.toString().trim();
+      if (fullSummary.isNotEmpty) {
+        meeting.summary = fullSummary;
+        meeting.fullTranscription = mergedContent;
+        meeting.updatedAt = DateTime.now();
+        await AppDatabase.instance.updateMeeting(meeting);
+        await _loadMeetings();
+      }
+
+      await LogService.info(
+        'MEETING',
+        'streaming summary complete, length=${fullSummary.length}',
+      );
+    } finally {
+      _dictionaryEntries = oldDictionaryEntries;
+      _termContextEntries = oldTermContextEntries;
+      _historyEntries = oldHistoryEntries;
+      _entityMemories = oldEntityMemories;
+      _entityAliases = oldEntityAliases;
+      _entityRelations = oldEntityRelations;
     }
-
-    // 流式结束后持久化
-    final fullSummary = buffer.toString().trim();
-    if (fullSummary.isNotEmpty) {
-      meeting.summary = fullSummary;
-      meeting.fullTranscription = mergedContent;
-      meeting.updatedAt = DateTime.now();
-      await AppDatabase.instance.updateMeeting(meeting);
-      await _loadMeetings();
-    }
-
-    await LogService.info(
-      'MEETING',
-      'streaming summary complete, length=${fullSummary.length}',
-    );
   }
 
   /// 判断标题是否为系统默认生成的标题（格式：会议 M/D HH:mm）
@@ -1258,6 +1363,10 @@ class MeetingProvider extends ChangeNotifier {
     try {
       await LogService.info('MEETING', 'generating title from content');
 
+      final memoryPromptSuffix = _buildMeetingMemoryPromptSuffix(
+        currentText: content,
+      );
+
       const titlePrompt =
           '你是一个会议标题生成助手。根据用户提供的会议内容，生成一个简洁的会议标题。\n\n'
           '## 规则\n'
@@ -1265,7 +1374,9 @@ class MeetingProvider extends ChangeNotifier {
           '- 只输出标题本身，不要添加引号、书名号、前后缀或任何解释\n'
           '- 使用与内容相同的语言';
 
-      final titleConfig = _aiConfig!.copyWith(prompt: titlePrompt);
+      final titleConfig = _aiConfig!.copyWith(
+        prompt: titlePrompt + _dictionarySuffix + memoryPromptSuffix,
+      );
       final enhancer = AiEnhanceService(titleConfig);
 
       // 只取前1500字作为上下文，避免 token 浪费
@@ -1296,6 +1407,21 @@ class MeetingProvider extends ChangeNotifier {
       await LogService.error('MEETING', 'generate title failed: $e');
       return '';
     }
+  }
+
+  String _buildMeetingMemoryPromptSuffix({required String currentText}) {
+    final bundle = _termPromptBuilder.build(
+      scene: 'meeting',
+      currentText: currentText,
+      history: _historyEntries,
+      dictionaryEntries: _dictionaryEntries,
+      sessionGlossary: SessionGlossary(),
+      termContextEntries: _termContextEntries,
+      entityMemories: _entityMemories,
+      entityAliases: _entityAliases,
+      entityRelations: _entityRelations,
+    );
+    return bundle.memoryPromptSuffix;
   }
 
   /// 取消录音

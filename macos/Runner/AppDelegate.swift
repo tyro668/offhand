@@ -314,6 +314,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
 
     // 获取当前修饰键状态（Cmd/Ctrl/Alt/Shift）
     let flags = NSEvent.modifierFlags
+    let modifiers = currentHotkeyModifiers(from: flags)
     let hasModifiersFromFlags = !flags.intersection([.command, .control, .option, .shift]).isEmpty
     let hasModifiers = hasModifiersOverride ?? hasModifiersFromFlags
 
@@ -322,6 +323,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       "type": type,
       "isRepeat": isRepeat,
       "hasModifiers": hasModifiers,
+      "modifiers": Int(modifiers),
     ]
 
     log("[hotkey] emit keyCode=\(keyCode) type=\(type) isRepeat=\(isRepeat) source=\(source)")
@@ -337,6 +339,23 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
       }
       channel.invokeMethod("onGlobalKeyEvent", arguments: payload)
     }
+  }
+
+  func currentHotkeyModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
+    var modifiers: UInt32 = 0
+    if flags.contains(.control) {
+      modifiers |= UInt32(controlKey)
+    }
+    if flags.contains(.option) {
+      modifiers |= UInt32(optionKey)
+    }
+    if flags.contains(.shift) {
+      modifiers |= UInt32(shiftKey)
+    }
+    if flags.contains(.command) {
+      modifiers |= UInt32(cmdKey)
+    }
+    return modifiers
   }
 
   @objc func showMainWindowFromStatusItem() {

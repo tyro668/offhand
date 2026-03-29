@@ -7,6 +7,7 @@ import '../../models/meeting.dart';
 import '../../models/provider_config.dart';
 import '../../models/ai_enhance_config.dart';
 import '../../providers/meeting_provider.dart';
+import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import '../../widgets/meeting_markdown_view.dart';
@@ -88,6 +89,10 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
             dictionarySuffix: widget.dictionarySuffix,
             dictionaryEntries: settings.dictionaryEntries,
             termContextEntries: settings.termContextEntries,
+            historyEntries: context.read<RecordingProvider>().history,
+            entityMemories: settings.entityMemories,
+            entityAliases: settings.entityAliases,
+            entityRelations: settings.entityRelations,
             pinyinMatcher: settings.correctionEffective
                 ? settings.pinyinMatcher
                 : null,

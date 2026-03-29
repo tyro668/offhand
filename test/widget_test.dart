@@ -33,7 +33,7 @@ void main() {
     await tester.pumpWidget(const VoiceTypeApp());
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(MaterialApp), findsOneWidget);
-    await tester.tap(find.text('词典'));
+    await tester.tap(find.text('记忆库'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('上下文'));
     await tester.pumpAndSettle();

@@ -16,6 +16,7 @@ class SlidingWindowMerger {
 
   /// AI 增强配置
   final AiEnhanceConfig aiConfig;
+  final String promptSuffix;
 
   /// 当前合并任务标识，用于取消控制
   int _currentTaskId = 0;
@@ -60,7 +61,11 @@ class SlidingWindowMerger {
   /// 流式 chunk 事件流
   Stream<MergeStreamEvent> get onStreamChunk => _streamChunkController.stream;
 
-  SlidingWindowMerger({required this.windowSize, required this.aiConfig});
+  SlidingWindowMerger({
+    required this.windowSize,
+    required this.aiConfig,
+    this.promptSuffix = '',
+  });
 
   String _segmentDisplayText(MeetingSegment segment) {
     return (segment.displayText ?? '').trim();
@@ -169,7 +174,7 @@ class SlidingWindowMerger {
       mergePrompt = aiConfig.prompt;
     }
 
-    final mergeConfig = aiConfig.copyWith(prompt: mergePrompt);
+    final mergeConfig = aiConfig.copyWith(prompt: mergePrompt + promptSuffix);
     final enhancer = AiEnhanceService(mergeConfig);
 
     // 3. 判断云端 vs 本地模型

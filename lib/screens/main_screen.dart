@@ -105,7 +105,7 @@ class _MainScreenState extends State<MainScreen> {
   int? _lastRegisteredMeetingHotkeyModifiers;
   bool _fnTapToTalkPressCandidate = false;
 
-  /// 主导航项（首页 / 词典 / 历史记录 / 会议记录）
+  /// 主导航项（首页 / 记忆库 / 转写档案 / 会议纪要）
   List<_NavItem> _getNavItems(
     AppLocalizations l10n, {
     required int pendingCandidateCount,
@@ -363,6 +363,7 @@ class _MainScreenState extends State<MainScreen> {
     String type,
     bool isRepeat,
     bool hasModifiers,
+    int modifiers,
   ) {
     if (isRepeat) return;
 
@@ -372,8 +373,10 @@ class _MainScreenState extends State<MainScreen> {
 
     // 会议快捷键处理
     if (key == settings.meetingHotkey) {
-      final hasMeetingModifiers = settings.meetingHotkeyModifiers != 0;
-      if (hasMeetingModifiers != hasModifiers) {
+      final expectedMeetingModifiers = _platformHotkeyModifiersFor(
+        settings.meetingHotkeyModifiers,
+      );
+      if (modifiers != expectedMeetingModifiers) {
         return;
       }
       _handleMeetingHotkey(type, settings);
@@ -486,6 +489,7 @@ class _MainScreenState extends State<MainScreen> {
         dictionarySuffix: settings.dictionaryWordsForPrompt,
         dictionaryEntries: settings.dictionaryEntries,
         termContextEntries: settings.termContextEntries,
+        historyEntries: context.read<RecordingProvider>().history,
         entityMemories: settings.entityMemories,
         entityAliases: settings.entityAliases,
         entityRelations: settings.entityRelations,

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
 import '../../providers/meeting_provider.dart';
+import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/meeting_markdown_view.dart';
 import 'meeting_detail_page.dart';
@@ -958,6 +959,12 @@ class _MeetingListPageState extends State<MeetingListPage> {
       final count = await provider.rebuildHistoricalMeetingsFromSegments(
         aiConfig: settings.effectiveAiEnhanceConfig,
         dictionarySuffix: settings.dictionaryWordsForPrompt,
+        dictionaryEntries: settings.dictionaryEntries,
+        termContextEntries: settings.termContextEntries,
+        historyEntries: context.read<RecordingProvider>().history,
+        entityMemories: settings.entityMemories,
+        entityAliases: settings.entityAliases,
+        entityRelations: settings.entityRelations,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

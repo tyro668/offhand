@@ -143,7 +143,7 @@ abstract class AppLocalizations {
   /// No description provided for @history.
   ///
   /// In en, this message translates to:
-  /// **'History'**
+  /// **'Transcription Archive'**
   String get history;
 
   /// No description provided for @logs.
@@ -221,7 +221,7 @@ abstract class AppLocalizations {
   /// No description provided for @meetingHotkeyDescription.
   ///
   /// In en, this message translates to:
-  /// **'Configure the hotkey for starting and ending meeting recording. Press once to start, press again to end.'**
+  /// **'Configure the key combination for starting and ending meeting recording. The default is Ctrl+M. Press once to start, press again to end.'**
   String get meetingHotkeyDescription;
 
   /// No description provided for @pressKeyToSet.
@@ -893,31 +893,31 @@ abstract class AppLocalizations {
   /// No description provided for @historySection.
   ///
   /// In en, this message translates to:
-  /// **'History'**
+  /// **'Transcription Archive'**
   String get historySection;
 
   /// No description provided for @noHistory.
   ///
   /// In en, this message translates to:
-  /// **'No transcription history'**
+  /// **'No transcription archives'**
   String get noHistory;
 
   /// No description provided for @historyHint.
   ///
   /// In en, this message translates to:
-  /// **'Use hotkey to start recording, transcription results will appear here'**
+  /// **'Use a hotkey to start recording. Enhanced transcription results will be archived here.'**
   String get historyHint;
 
   /// No description provided for @clearHistory.
   ///
   /// In en, this message translates to:
-  /// **'Clear History'**
+  /// **'Clear Archive'**
   String get clearHistory;
 
   /// No description provided for @clearHistoryConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to clear all history? This action cannot be undone.'**
+  /// **'Are you sure you want to clear all transcription archives? This action cannot be undone.'**
   String get clearHistoryConfirm;
 
   /// No description provided for @clearAll.
@@ -959,7 +959,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchHistory.
   ///
   /// In en, this message translates to:
-  /// **'Search history...'**
+  /// **'Search transcription archives...'**
   String get searchHistory;
 
   /// No description provided for @aboutSection.
@@ -1847,7 +1847,7 @@ abstract class AppLocalizations {
   /// No description provided for @dictionarySettings.
   ///
   /// In en, this message translates to:
-  /// **'Dictionary'**
+  /// **'Memory'**
   String get dictionarySettings;
 
   /// No description provided for @dictionaryDescription.
@@ -2345,7 +2345,7 @@ abstract class AppLocalizations {
   /// No description provided for @meetingEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No meeting records'**
+  /// **'No meeting minutes'**
   String get meetingEmpty;
 
   /// No description provided for @meetingEmptyHint.
@@ -2519,7 +2519,7 @@ abstract class AppLocalizations {
   /// No description provided for @meetingDeleteConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Are you sure you want to delete this meeting record? This action cannot be undone.'**
+  /// **'Are you sure you want to delete these meeting minutes? This action cannot be undone.'**
   String get meetingDeleteConfirm;
 
   /// No description provided for @meetingDate.
@@ -2597,7 +2597,7 @@ abstract class AppLocalizations {
   /// No description provided for @meetingNotFound.
   ///
   /// In en, this message translates to:
-  /// **'Meeting record not found'**
+  /// **'Meeting minutes not found'**
   String get meetingNotFound;
 
   /// No description provided for @meetingOverlayStarting.

@@ -30,7 +30,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiEnhanceHub => 'AI Enhancement';
 
   @override
-  String get history => 'History';
+  String get history => 'Transcription Archive';
 
   @override
   String get logs => 'Logs';
@@ -72,7 +72,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meetingHotkeyDescription =>
-      'Configure the hotkey for starting and ending meeting recording. Press once to start, press again to end.';
+      'Configure the key combination for starting and ending meeting recording. The default is Ctrl+M. Press once to start, press again to end.';
 
   @override
   String get pressKeyToSet => 'Press a key to set as hotkey';
@@ -432,21 +432,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get outputWillAppearHere => 'Output will appear here';
 
   @override
-  String get historySection => 'History';
+  String get historySection => 'Transcription Archive';
 
   @override
-  String get noHistory => 'No transcription history';
+  String get noHistory => 'No transcription archives';
 
   @override
   String get historyHint =>
-      'Use hotkey to start recording, transcription results will appear here';
+      'Use a hotkey to start recording. Enhanced transcription results will be archived here.';
 
   @override
-  String get clearHistory => 'Clear History';
+  String get clearHistory => 'Clear Archive';
 
   @override
   String get clearHistoryConfirm =>
-      'Are you sure you want to clear all history? This action cannot be undone.';
+      'Are you sure you want to clear all transcription archives? This action cannot be undone.';
 
   @override
   String get clearAll => 'Clear All';
@@ -467,7 +467,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteHistoryItem => 'Delete';
 
   @override
-  String get searchHistory => 'Search history...';
+  String get searchHistory => 'Search transcription archives...';
 
   @override
   String get aboutSection => 'About';
@@ -948,7 +948,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptPreview => 'Preview';
 
   @override
-  String get dictionarySettings => 'Dictionary';
+  String get dictionarySettings => 'Memory';
 
   @override
   String get dictionaryDescription =>
@@ -1249,7 +1249,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meetingCompleted => 'Completed';
 
   @override
-  String get meetingEmpty => 'No meeting records';
+  String get meetingEmpty => 'No meeting minutes';
 
   @override
   String get meetingEmptyHint =>
@@ -1341,7 +1341,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get meetingDeleteConfirm =>
-      'Are you sure you want to delete this meeting record? This action cannot be undone.';
+      'Are you sure you want to delete these meeting minutes? This action cannot be undone.';
 
   @override
   String get meetingDate => 'Date';
@@ -1380,7 +1380,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get meetingEmptyContent => 'Empty';
 
   @override
-  String get meetingNotFound => 'Meeting record not found';
+  String get meetingNotFound => 'Meeting minutes not found';
 
   @override
   String get meetingOverlayStarting => 'Meeting starting';

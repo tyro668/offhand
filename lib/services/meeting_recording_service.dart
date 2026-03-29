@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/meeting.dart';
@@ -12,6 +13,7 @@ import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/stt_request_context.dart';
 import '../models/term_context_entry.dart';
+import '../models/transcription.dart';
 import 'audio_recorder.dart';
 import 'stt_service.dart';
 import 'ai_enhance_service.dart';
@@ -151,6 +153,7 @@ class MeetingRecordingService {
   bool _aiEnhanceEnabled = false;
   List<DictionaryEntry> _dictionaryEntries = const [];
   List<TermContextEntry> _termContextEntries = const [];
+  List<Transcription> _historyEntries = const [];
   List<EntityMemory> _entityMemories = const [];
   List<EntityAlias> _entityAliases = const [];
   List<EntityRelation> _entityRelations = const [];
@@ -192,6 +195,22 @@ class MeetingRecordingService {
   final SessionGlossary _sessionGlossary = SessionGlossary();
   final SessionEntityState _sessionEntityState = SessionEntityState();
 
+  String buildMeetingMemoryPromptSuffix({String currentText = ''}) {
+    final bundle = _termPromptBuilder.build(
+      scene: 'meeting',
+      currentText: currentText,
+      history: _historyEntries,
+      dictionaryEntries: _dictionaryEntries,
+      sessionGlossary: _sessionGlossary,
+      sessionEntityState: _sessionEntityState,
+      termContextEntries: _termContextEntries,
+      entityMemories: _entityMemories,
+      entityAliases: _entityAliases,
+      entityRelations: _entityRelations,
+    );
+    return bundle.memoryPromptSuffix;
+  }
+
   /// 开始新的会议录音
   Future<MeetingRecord> startMeeting({
     String? title,
@@ -202,6 +221,7 @@ class MeetingRecordingService {
     int windowSize = 5,
     List<DictionaryEntry> dictionaryEntries = const [],
     List<TermContextEntry> termContextEntries = const [],
+    List<Transcription> historyEntries = const [],
     List<EntityMemory> entityMemories = const [],
     List<EntityAlias> entityAliases = const [],
     List<EntityRelation> entityRelations = const [],
@@ -223,6 +243,7 @@ class MeetingRecordingService {
     _aiEnhanceEnabled = aiEnhanceEnabled;
     _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
     _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+    _historyEntries = List<Transcription>.from(historyEntries);
     _entityMemories = List<EntityMemory>.from(entityMemories);
     _entityAliases = List<EntityAlias>.from(entityAliases);
     _entityRelations = List<EntityRelation>.from(entityRelations);
@@ -271,16 +292,21 @@ class MeetingRecordingService {
     // 创建滑动窗口合并器（需要 AI 配置）
     if (_aiConfig != null) {
       final clampedWindowSize = clampWindowSize(windowSize);
+      final memoryPromptSuffix = buildMeetingMemoryPromptSuffix();
       _merger = SlidingWindowMerger(
         windowSize: clampedWindowSize,
         aiConfig: _aiConfig!,
+        promptSuffix: memoryPromptSuffix,
       );
     }
 
     // 创建增量摘要服务
     _incrementalSummary?.dispose();
     if (_aiConfig != null && aiEnhanceEnabled) {
-      _incrementalSummary = IncrementalSummaryService(aiConfig: _aiConfig!);
+      _incrementalSummary = IncrementalSummaryService(
+        aiConfig: _aiConfig!,
+        dictionarySuffix: buildMeetingMemoryPromptSuffix(),
+      );
     } else {
       _incrementalSummary = null;
     }
@@ -867,7 +893,7 @@ class MeetingRecordingService {
     final bundle = _termPromptBuilder.build(
       scene: 'meeting',
       currentText: _merger?.currentFullText ?? '',
-      history: const [],
+      history: _historyEntries,
       dictionaryEntries: _dictionaryEntries,
       sessionGlossary: _sessionGlossary,
       sessionEntityState: _sessionEntityState,
@@ -884,6 +910,9 @@ class MeetingRecordingService {
       preserveTerms: bundle.preserveTerms,
     );
   }
+
+  @visibleForTesting
+  SttRequestContext? debugBuildSttRequestContext() => _buildSttRequestContext();
 
   /// 等待所有分段处理完成
   Future<void> _waitForProcessingComplete({Duration? timeout}) async {

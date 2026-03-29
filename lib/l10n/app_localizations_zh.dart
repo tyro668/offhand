@@ -30,7 +30,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiEnhanceHub => '智能增强';
 
   @override
-  String get history => '历史记录';
+  String get history => '转写档案';
 
   @override
   String get logs => '日志';
@@ -69,7 +69,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingHotkey => '会议录音快捷键';
 
   @override
-  String get meetingHotkeyDescription => '配置用于开始和结束会议录音的按键。按一次开始录音，再按一次结束。';
+  String get meetingHotkeyDescription =>
+      '配置用于开始和结束会议录音的组合键，默认是 Ctrl+M。按一次开始录音，再按一次结束。';
 
   @override
   String get pressKeyToSet => '按下要设置为快捷键的按键';
@@ -414,19 +415,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get outputWillAppearHere => '输出结果将显示在这里';
 
   @override
-  String get historySection => '历史记录';
+  String get historySection => '转写档案';
 
   @override
-  String get noHistory => '暂无转写历史';
+  String get noHistory => '暂无转写档案';
 
   @override
-  String get historyHint => '使用快捷键开始录音，转录结果将显示在这里';
+  String get historyHint => '使用快捷键开始录音，增强后的转写结果将归档在这里';
 
   @override
-  String get clearHistory => '清空历史记录';
+  String get clearHistory => '清空转写档案';
 
   @override
-  String get clearHistoryConfirm => '确定要删除所有历史记录吗？此操作不可撤销。';
+  String get clearHistoryConfirm => '确定要删除所有转写档案吗？此操作不可撤销。';
 
   @override
   String get clearAll => '清空全部';
@@ -447,7 +448,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteHistoryItem => '删除';
 
   @override
-  String get searchHistory => '搜索历史记录...';
+  String get searchHistory => '搜索转写档案...';
 
   @override
   String get aboutSection => '关于';
@@ -907,7 +908,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptPreview => '预览';
 
   @override
-  String get dictionarySettings => '词典';
+  String get dictionarySettings => '记忆库';
 
   @override
   String get dictionaryDescription => '设置词语纠正和保留规则，帮助 AI 更准确地输出专业术语和固定用语。';
@@ -1180,7 +1181,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pinyinReset => '恢复自动拼音';
 
   @override
-  String get meetingMinutes => '会议记录';
+  String get meetingMinutes => '会议纪要';
 
   @override
   String get meetingNew => '新建会议';
@@ -1195,7 +1196,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingCompleted => '已完成';
 
   @override
-  String get meetingEmpty => '暂无会议记录';
+  String get meetingEmpty => '暂无会议纪要';
 
   @override
   String get meetingEmptyHint => '点击上方按钮开始新的会议录制';
@@ -1282,7 +1283,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingDeleteConfirmTitle => '删除会议';
 
   @override
-  String get meetingDeleteConfirm => '确定要删除这条会议记录吗？此操作不可撤销。';
+  String get meetingDeleteConfirm => '确定要删除这条会议纪要吗？此操作不可撤销。';
 
   @override
   String get meetingDate => '日期';
@@ -1321,7 +1322,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get meetingEmptyContent => '内容为空';
 
   @override
-  String get meetingNotFound => '会议记录不存在';
+  String get meetingNotFound => '会议纪要不存在';
 
   @override
   String get meetingOverlayStarting => '会议启动中';

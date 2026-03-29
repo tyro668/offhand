@@ -70,6 +70,23 @@ bool MatchHotkeyModifiers(int required_modifiers) {
   return active_modifiers == required_modifiers;
 }
 
+int CurrentHotkeyModifiers() {
+  int modifiers = 0;
+  if (IsVirtualKeyPressed(VK_CONTROL)) {
+    modifiers |= MOD_CONTROL;
+  }
+  if (IsVirtualKeyPressed(VK_MENU)) {
+    modifiers |= MOD_ALT;
+  }
+  if (IsVirtualKeyPressed(VK_SHIFT)) {
+    modifiers |= MOD_SHIFT;
+  }
+  if (IsVirtualKeyPressed(VK_LWIN) || IsVirtualKeyPressed(VK_RWIN)) {
+    modifiers |= MOD_WIN;
+  }
+  return modifiers;
+}
+
 template <typename T>
 std::optional<T> GetMapValue(const flutter::EncodableMap& map,
                              const std::string& key) {
@@ -465,7 +482,7 @@ LRESULT CALLBACK FlutterWindow::LowLevelKeyboardProc(int n_code, WPARAM wparam,
         instance_->hotkey_is_down_ = is_key_down;
         instance_->EmitGlobalKeyEvent(
             instance_->hotkey_key_code_, is_key_down ? "down" : "up",
-            is_repeat);
+            is_repeat, CurrentHotkeyModifiers());
       }
 
       // Check meeting hotkey
@@ -476,7 +493,7 @@ LRESULT CALLBACK FlutterWindow::LowLevelKeyboardProc(int n_code, WPARAM wparam,
         instance_->meeting_hotkey_is_down_ = is_key_down;
         instance_->EmitGlobalKeyEvent(
             instance_->meeting_hotkey_key_code_, is_key_down ? "down" : "up",
-            is_repeat);
+            is_repeat, CurrentHotkeyModifiers());
       }
     }
   }
@@ -484,18 +501,12 @@ LRESULT CALLBACK FlutterWindow::LowLevelKeyboardProc(int n_code, WPARAM wparam,
 }
 
 void FlutterWindow::EmitGlobalKeyEvent(int key_code, const std::string& type,
-                                       bool is_repeat) {
+                                       bool is_repeat, int modifiers) {
   if (!method_channel_) {
     return;
   }
 
-  // 检测修饰键是否按下（Ctrl/Alt/Shift/Win）
-  const bool has_modifiers =
-      (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 ||
-      (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 ||
-      (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0 ||
-      (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
-      (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+  const bool has_modifiers = modifiers != 0;
 
   flutter::EncodableMap payload;
   payload[flutter::EncodableValue("keyCode")] =
@@ -505,6 +516,8 @@ void FlutterWindow::EmitGlobalKeyEvent(int key_code, const std::string& type,
       flutter::EncodableValue(is_repeat);
   payload[flutter::EncodableValue("hasModifiers")] =
       flutter::EncodableValue(has_modifiers);
+  payload[flutter::EncodableValue("modifiers")] =
+      flutter::EncodableValue(static_cast<int32_t>(modifiers));
   method_channel_->InvokeMethod("onGlobalKeyEvent",
                                 std::make_unique<flutter::EncodableValue>(
                                     std::move(payload)));

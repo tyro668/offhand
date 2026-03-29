@@ -1,6 +1,7 @@
 import '../models/dictionary_entry.dart';
 import '../models/entity_alias.dart';
 import '../models/entity_memory.dart';
+import '../models/entity_prompt_bundle.dart';
 import '../models/entity_relation.dart';
 import '../models/term_context_entry.dart';
 import '../models/term_prompt_bundle.dart';
@@ -91,8 +92,16 @@ class TermPromptBuilder {
       prompt.writeln(entityBundle.sttSection.trim());
     }
 
+    final memoryPromptSuffix = _buildMemoryPromptSuffix(
+      preferredTerms: mergedPreferredTerms,
+      correctionReferences: correctionReferences,
+      contextDocuments: contextDocuments,
+      entityBundle: entityBundle,
+    );
+
     return TermPromptBundle(
       sttPrompt: prompt.toString().trim(),
+      memoryPromptSuffix: memoryPromptSuffix,
       preferredTerms: mergedPreferredTerms,
       preserveTerms: preserveTerms,
       correctionReferences: correctionReferences,
@@ -114,6 +123,67 @@ class TermPromptBuilder {
     final normalized = content.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (normalized.length <= 1200) return normalized;
     return '${normalized.substring(0, 1200)}...';
+  }
+
+  String _buildMemoryPromptSuffix({
+    required List<String> preferredTerms,
+    required List<String> correctionReferences,
+    required List<TermContextEntry> contextDocuments,
+    required EntityPromptBundle entityBundle,
+  }) {
+    final buf = StringBuffer();
+
+    if (preferredTerms.isNotEmpty) {
+      buf.writeln();
+      buf.writeln('【会议记忆参考】');
+      buf.writeln('请优先保持以下术语、名称与写法一致：');
+      for (final term in preferredTerms.take(20)) {
+        buf.writeln('- $term');
+      }
+    }
+
+    if (correctionReferences.isNotEmpty) {
+      if (buf.isEmpty) {
+        buf.writeln();
+        buf.writeln('【会议记忆参考】');
+      }
+      buf.writeln('若出现同音、近音或误写，请优先参考以下纠正规则：');
+      for (final item in correctionReferences.take(20)) {
+        buf.writeln('- $item');
+      }
+    }
+
+    if (contextDocuments.isNotEmpty) {
+      if (buf.isEmpty) {
+        buf.writeln();
+        buf.writeln('【会议记忆参考】');
+      }
+      buf.writeln('可参考以下上下文资料：');
+      for (final entry in contextDocuments) {
+        buf.writeln('[${entry.displayTitle}]');
+        buf.writeln(_truncateContext(entry.content ?? ''));
+      }
+    }
+
+    if (entityBundle.correctionEntitySection.trim().isNotEmpty) {
+      if (buf.isEmpty) {
+        buf.writeln();
+        buf.writeln('【会议记忆参考】');
+      }
+      buf.writeln('以下实体名称、别称和误识别映射需要优先保持一致：');
+      buf.writeln(entityBundle.correctionEntitySection.trim());
+    }
+
+    if (entityBundle.correctionRelationSection.trim().isNotEmpty) {
+      if (buf.isEmpty) {
+        buf.writeln();
+        buf.writeln('【会议记忆参考】');
+      }
+      buf.writeln('实体关系参考：');
+      buf.writeln(entityBundle.correctionRelationSection.trim());
+    }
+
+    return buf.toString().trimRight();
   }
 
   List<String> _buildCorrectionReferences(

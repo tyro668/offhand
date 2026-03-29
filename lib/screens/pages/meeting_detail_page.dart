@@ -9,6 +9,7 @@ import '../../database/app_database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
 import '../../providers/meeting_provider.dart';
+import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import '../../widgets/meeting_markdown_editor.dart';
@@ -964,6 +965,12 @@ class _MeetingDetailPageState extends State<MeetingDetailPage> {
             content: content,
             aiConfig: settings.effectiveAiEnhanceConfig,
             dictionarySuffix: settings.dictionaryWordsForPrompt,
+            dictionaryEntries: settings.dictionaryEntries,
+            termContextEntries: settings.termContextEntries,
+            historyEntries: context.read<RecordingProvider>().history,
+            entityMemories: settings.entityMemories,
+            entityAliases: settings.entityAliases,
+            entityRelations: settings.entityRelations,
           )) {
         hasChunk = true;
         if (chunk.isEmpty) continue;

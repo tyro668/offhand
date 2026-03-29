@@ -95,6 +95,10 @@ void main() {
       expect(bundle.sttPrompt, contains('glossary.md'));
       expect(bundle.sttPrompt, contains('当前活跃实体参考'));
       expect(bundle.sttPrompt, contains('张三丰'));
+      expect(bundle.memoryPromptSuffix, contains('【会议记忆参考】'));
+      expect(bundle.memoryPromptSuffix, contains('反软->帆软'));
+      expect(bundle.memoryPromptSuffix, contains('glossary.md'));
+      expect(bundle.memoryPromptSuffix, contains('张三丰 | type=person'));
       expect(bundle.entityCorrectionSection, contains('张三丰 | type=person'));
       expect(bundle.entityRelationSection, contains('张三丰 -> 李四娃 : 哥哥'));
     });
@@ -124,5 +128,35 @@ void main() {
         expect(bundle.sttPrompt, contains('notes.md'));
       },
     );
+
+    test('meeting prompt can recall terms from transcription history only', () {
+      final bundle = builder.build(
+        scene: 'meeting',
+        currentText: '',
+        history: [
+          Transcription(
+            id: 'h1',
+            text: '上次会议确认帆软和张三丰都会继续参加。',
+            createdAt: DateTime(2026, 3, 29),
+            duration: const Duration(seconds: 8),
+            provider: 'test',
+            model: 'test',
+            providerConfigJson: '{}',
+          ),
+        ],
+        dictionaryEntries: [
+          DictionaryEntry.create(
+            original: '反软',
+            corrected: '帆软',
+            source: DictionaryEntrySource.historyEdit,
+          ),
+        ],
+        sessionGlossary: SessionGlossary(),
+      );
+
+      expect(bundle.hasPrompt, isTrue);
+      expect(bundle.preferredTerms, contains('帆软'));
+      expect(bundle.sttPrompt, contains('帆软'));
+    });
   });
 }

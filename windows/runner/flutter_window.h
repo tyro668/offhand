@@ -49,7 +49,7 @@ class FlutterWindow : public Win32Window {
     static LRESULT CALLBACK LowLevelKeyboardProc(int n_code, WPARAM wparam,
                                                  LPARAM lparam);
     void EmitGlobalKeyEvent(int key_code, const std::string& type,
-                            bool is_repeat);
+                            bool is_repeat, int modifiers);
 
     void EnsureOverlayWindow();
     void ShowOverlay(const std::string& state, const std::string& duration,

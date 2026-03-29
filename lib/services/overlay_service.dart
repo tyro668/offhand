@@ -12,7 +12,13 @@ class OverlayService {
   static String? _activeOwner;
 
   /// 全局快捷键回调
-  static Function(int keyCode, String type, bool isRepeat, bool hasModifiers)?
+  static Function(
+    int keyCode,
+    String type,
+    bool isRepeat,
+    bool hasModifiers,
+    int modifiers,
+  )?
   onGlobalKeyEvent;
 
   static void init() {
@@ -25,13 +31,20 @@ class OverlayService {
         final type = args['type'] as String;
         final isRepeat = args['isRepeat'] as bool;
         final hasModifiers = args['hasModifiers'] as bool? ?? false;
+        final modifiers = args['modifiers'] as int? ?? 0;
         final hasCallback = onGlobalKeyEvent != null;
         LogService.info(
           'OVERLAY',
-          'onGlobalKeyEvent keyCode=$keyCode type=$type hasModifiers=$hasModifiers hasCallback=$hasCallback',
+          'onGlobalKeyEvent keyCode=$keyCode type=$type hasModifiers=$hasModifiers modifiers=$modifiers hasCallback=$hasCallback',
         );
         try {
-          onGlobalKeyEvent?.call(keyCode, type, isRepeat, hasModifiers);
+          onGlobalKeyEvent?.call(
+            keyCode,
+            type,
+            isRepeat,
+            hasModifiers,
+            modifiers,
+          );
         } catch (e) {
           LogService.error('OVERLAY', 'onGlobalKeyEvent callback error: $e');
         }
