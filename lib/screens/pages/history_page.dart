@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/dictionary_entry.dart';
 import '../../models/dictation_term_pending_candidate.dart';
+import '../../models/entity_alias.dart';
+import '../../models/entity_memory.dart';
 import '../../models/transcription.dart';
+import '../../providers/meeting_provider.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/dictation_term_memory_service.dart';
@@ -27,12 +32,37 @@ class _HistoryPageState extends State<HistoryPage> {
   /// 记录哪些 item id 的原始文本处于展开状态
   final Set<String> _expandedRawText = {};
 
+  void _showFloatingSnackBar(String message, {Duration? duration}) {
+    final text = message.trim();
+    if (!mounted || text.isEmpty) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(text, maxLines: 3, overflow: TextOverflow.ellipsis),
+          duration: duration ?? const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final recording = context.watch<RecordingProvider>();
     final settings = context.watch<SettingsProvider>();
     final history = recording.history;
     final pendingCandidates = settings.dictationTermPendingCandidates;
+    final hasLearnableEditedHistory = history.any(
+      (item) =>
+          recording.isHistoryEdited(item.id) &&
+          item.hasRawText &&
+          item.rawText!.trim().isNotEmpty &&
+          item.rawText!.trim() != item.text.trim(),
+    );
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
@@ -60,6 +90,17 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ),
               const Spacer(),
+              if (hasLearnableEditedHistory)
+                IconButton(
+                  icon: Icon(
+                    Icons.sync_alt_rounded,
+                    color: _cs.primary,
+                    size: 22,
+                  ),
+                  tooltip: '同步历史修正',
+                  onPressed: () =>
+                      _syncEditedHistoryCorrections(recording, settings),
+                ),
               if (history.isNotEmpty)
                 IconButton(
                   icon: Icon(
@@ -86,6 +127,79 @@ class _HistoryPageState extends State<HistoryPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _syncEditedHistoryCorrections(
+    RecordingProvider recording,
+    SettingsProvider settings,
+  ) async {
+    final meeting = context.read<MeetingProvider?>();
+    final learnedTerms = <String>{};
+    final learnedEntities = <String>{};
+    var skippedItems = 0;
+
+    for (final item in recording.history) {
+      if (!recording.isHistoryEdited(item.id)) continue;
+      final rawText = (item.rawText ?? '').trim();
+      final editedText = item.text.trim();
+      if (rawText.isEmpty || editedText.isEmpty || rawText == editedText) {
+        skippedItems++;
+        continue;
+      }
+
+      final candidates = _termMemoryService.extractCandidates(
+        beforeText: rawText,
+        afterText: editedText,
+        rawText: rawText,
+      );
+      if (candidates.isEmpty) {
+        skippedItems++;
+        continue;
+      }
+
+      for (final candidate in candidates) {
+        final entry = await settings.upsertDictionaryCorrectionEntry(
+          original: candidate.original,
+          corrected: candidate.corrected,
+          source: DictionaryEntrySource.historyEdit,
+        );
+        final corrected = (entry.corrected ?? '').trim();
+        if (corrected.isEmpty) continue;
+        recording.applySessionGlossaryOverride(entry.original, corrected);
+        meeting?.applySessionGlossaryOverride(entry.original, corrected);
+        learnedTerms.add('${entry.original} -> $corrected');
+      }
+
+      final entityResults = await settings.learnEntitiesFromHistoryEdit(
+        beforeText: rawText,
+        afterText: editedText,
+        rawText: rawText,
+        sourceHistoryId: item.id,
+      );
+      for (final entity in entityResults) {
+        recording.activateSessionEntity(
+          entityId: entity.id,
+          canonicalName: entity.canonicalName,
+          alias: entity.canonicalName,
+        );
+        meeting?.activateSessionEntity(
+          entityId: entity.id,
+          canonicalName: entity.canonicalName,
+          alias: entity.canonicalName,
+        );
+        learnedEntities.add(entity.canonicalName);
+      }
+    }
+
+    if (!mounted) return;
+    final message = learnedTerms.isEmpty && learnedEntities.isEmpty
+        ? '没有可同步的历史修正'
+        : [
+            if (learnedTerms.isNotEmpty) '已同步 ${learnedTerms.length} 条历史修正',
+            if (learnedEntities.isNotEmpty) '已学习 ${learnedEntities.length} 个实体',
+            if (skippedItems > 0) '跳过 $skippedItems 条',
+          ].join('，');
+    _showFloatingSnackBar(message, duration: const Duration(seconds: 2));
   }
 
   Widget _buildEmpty(AppLocalizations l10n) {
@@ -395,7 +509,21 @@ class _HistoryPageState extends State<HistoryPage> {
                           label: l10n.addToDictionary,
                           onPressed: () {
                             ContextMenuController.removeAny();
-                            _addToDictionary(selectedText.trim());
+                            SchedulerBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              _addToDictionary(selectedText.trim());
+                            });
+                          },
+                        ),
+                      if (selectedText.trim().isNotEmpty)
+                        ContextMenuButtonItem(
+                          label: '作为实体学习',
+                          onPressed: () {
+                            ContextMenuController.removeAny();
+                            SchedulerBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              _addSelectedTextAsEntity(selectedText.trim());
+                            });
                           },
                         ),
                     ],
@@ -490,29 +618,27 @@ class _HistoryPageState extends State<HistoryPage> {
 
     await settings.addDictionaryEntry(entry);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${l10n.addedToDictionary}: ${entry.original}'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
+    _showFloatingSnackBar(
+      '${l10n.addedToDictionary}: ${entry.original}',
+      duration: const Duration(seconds: 2),
     );
   }
 
   Future<void> _editHistoryItem(Transcription item) async {
     final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController(text: item.text);
+    var draftText = item.text;
     final edited = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.edit),
         content: SizedBox(
           width: 520,
-          child: TextField(
-            controller: controller,
+          child: TextFormField(
+            initialValue: item.text,
             autofocus: true,
             minLines: 6,
             maxLines: 14,
+            onChanged: (value) => draftText = value,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               hintText: l10n.historyHint,
@@ -525,13 +651,12 @@ class _HistoryPageState extends State<HistoryPage> {
             child: Text(l10n.cancel),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            onPressed: () => Navigator.pop(ctx, draftText.trim()),
             child: Text(l10n.saveChanges),
           ),
         ],
       ),
     );
-    controller.dispose();
 
     final nextText = (edited ?? '').trim();
     if (!mounted || nextText.isEmpty || nextText == item.text.trim()) {
@@ -544,87 +669,203 @@ class _HistoryPageState extends State<HistoryPage> {
       rawText: item.rawText,
     );
 
-    var shouldQueueTerms = false;
-    if (mounted && candidates.isNotEmpty) {
-      shouldQueueTerms = await _confirmTermCandidates(candidates);
-    }
-
-    if (!mounted) return;
-
     final recording = context.read<RecordingProvider>();
     final settings = context.read<SettingsProvider>();
     await recording.updateHistoryText(item.id, nextText);
 
-    if (candidates.isEmpty || !mounted || !shouldQueueTerms) {
+    if (candidates.isEmpty || !mounted) {
       return;
     }
 
-    final queuedTerms = <String>[];
+    final meeting = context.read<MeetingProvider?>();
+    final learnedTerms = <String>[];
     for (final candidate in candidates) {
-      final queued = await settings.addOrMergeTermPendingCandidate(
+      final entry = await settings.upsertDictionaryCorrectionEntry(
         original: candidate.original,
         corrected: candidate.corrected,
-        confidence: candidate.confidence,
-        sourceHistoryId: item.id,
+        source: DictionaryEntrySource.historyEdit,
       );
-      if (queued != null) {
-        queuedTerms.add(queued.original);
+      final corrected = (entry.corrected ?? '').trim();
+      if (corrected.isNotEmpty) {
+        recording.applySessionGlossaryOverride(entry.original, corrected);
+        meeting?.applySessionGlossaryOverride(entry.original, corrected);
+        learnedTerms.add('${entry.original} -> $corrected');
       }
     }
-
-    if (!mounted || queuedTerms.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('已加入待确认术语：${queuedTerms.join(', ')}。当前页顶部可查看。'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
+    final learnedEntities = await settings.learnEntitiesFromHistoryEdit(
+      beforeText: item.text,
+      afterText: nextText,
+      rawText: item.rawText,
+      sourceHistoryId: item.id,
     );
+    for (final entity in learnedEntities) {
+      recording.activateSessionEntity(
+        entityId: entity.id,
+        canonicalName: entity.canonicalName,
+        alias: entity.canonicalName,
+      );
+      meeting?.activateSessionEntity(
+        entityId: entity.id,
+        canonicalName: entity.canonicalName,
+        alias: entity.canonicalName,
+      );
+    }
+
+    if (!mounted || (learnedTerms.isEmpty && learnedEntities.isEmpty)) return;
+    final entityNames = learnedEntities
+        .map((e) => e.canonicalName)
+        .toSet()
+        .toList(growable: false);
+    final summary = <String>[
+      if (learnedTerms.isNotEmpty) '已学习 ${learnedTerms.length} 条历史修正',
+      if (entityNames.isNotEmpty) '已学习 ${entityNames.length} 个实体',
+    ].join('，');
+    _showFloatingSnackBar(summary, duration: const Duration(seconds: 2));
   }
 
-  Future<bool> _confirmTermCandidates(
-    List<DictationTermCandidate> candidates,
-  ) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('识别到术语修正'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('本次修改中检测到以下候选术语，是否加入待确认列表，稍后在词典页统一审核：'),
-              const SizedBox(height: 12),
-              ...candidates.map(
-                (candidate) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    '• ${candidate.original} -> ${candidate.corrected}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(ctx).colorScheme.onSurface,
+  Future<void> _addSelectedTextAsEntity(String selectedText) async {
+    final canonicalCtrl = TextEditingController(text: selectedText);
+    final aliasCtrl = TextEditingController(text: selectedText);
+    EntityType type = EntityType.person;
+    EntityAliasType aliasType = EntityAliasType.misrecognition;
+    var highConfidence = true;
+    try {
+      final shouldSave = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('作为实体学习'),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: canonicalCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '标准名',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: aliasCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '别名 / 原词',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<EntityType>(
+                    value: type,
+                    decoration: const InputDecoration(
+                      labelText: '类型',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: EntityType.values
+                        .map((value) {
+                          return DropdownMenuItem(
+                            value: value,
+                            child: Text(_entityTypeLabel(value)),
+                          );
+                        })
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => type = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<EntityAliasType>(
+                    value: aliasType,
+                    decoration: const InputDecoration(
+                      labelText: '别名类型',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: EntityAliasType.values
+                        .map((value) {
+                          return DropdownMenuItem(
+                            value: value,
+                            child: Text(_entityAliasTypeLabel(value)),
+                          );
+                        })
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => aliasType = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    value: highConfidence,
+                    title: const Text('立即提升为高置信'),
+                    onChanged: (value) {
+                      setState(() => highConfidence = value);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('保存'),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('仅保存文本'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('保存并加入候选池'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
+      );
+      if (shouldSave != true || !mounted) return;
+      await context.read<SettingsProvider>().addManualEntity(
+        canonicalName: canonicalCtrl.text.trim(),
+        type: type,
+        aliases: [aliasCtrl.text.trim()],
+        aliasType: aliasType,
+        confidence: highConfidence ? 0.98 : 0.85,
+      );
+      if (!mounted) return;
+      _showFloatingSnackBar('已作为实体学习');
+    } finally {
+      canonicalCtrl.dispose();
+      aliasCtrl.dispose();
+    }
+  }
+
+  String _entityTypeLabel(EntityType type) {
+    switch (type) {
+      case EntityType.person:
+        return '人名';
+      case EntityType.company:
+        return '公司';
+      case EntityType.product:
+        return '产品';
+      case EntityType.project:
+        return '项目';
+      case EntityType.system:
+        return '系统';
+      case EntityType.custom:
+        return '自定义';
+    }
+  }
+
+  String _entityAliasTypeLabel(EntityAliasType type) {
+    switch (type) {
+      case EntityAliasType.fullName:
+        return '全名';
+      case EntityAliasType.nickname:
+        return '小名';
+      case EntityAliasType.alias:
+        return '外号';
+      case EntityAliasType.misrecognition:
+        return '误识别';
+      case EntityAliasType.abbreviation:
+        return '缩写';
+    }
   }
 
   void _confirmClearAll(

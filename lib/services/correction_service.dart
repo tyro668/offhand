@@ -1,12 +1,18 @@
 import '../models/ai_enhance_config.dart';
 import '../models/correction_change_log.dart';
 import '../models/dictionary_entry.dart';
+import '../models/entity_alias.dart';
+import '../models/entity_memory.dart';
+import '../models/entity_relation.dart';
+import '../models/entity_prompt_bundle.dart';
 import 'ai_enhance_service.dart';
 import 'correction_change_log_service.dart';
 import 'correction_context.dart';
+import 'entity_recall_service.dart';
 import 'log_service.dart';
 import 'pinyin_matcher.dart';
 import 'correction_stats_service.dart';
+import 'session_entity_state.dart';
 import 'session_glossary.dart';
 import 'token_stats_service.dart';
 
@@ -47,6 +53,11 @@ class CorrectionService {
   final int maxReferenceEntries;
   final double minCandidateScore;
   final SessionGlossary? sessionGlossary;
+  final List<EntityMemory> entityMemories;
+  final List<EntityAlias> entityAliases;
+  final List<EntityRelation> entityRelations;
+  final SessionEntityState? sessionEntityState;
+  final EntityRecallService entityRecallService;
 
   CorrectionService({
     required this.matcher,
@@ -56,6 +67,11 @@ class CorrectionService {
     this.maxReferenceEntries = 15,
     this.minCandidateScore = 0.30,
     this.sessionGlossary,
+    this.entityMemories = const [],
+    this.entityAliases = const [],
+    this.entityRelations = const [],
+    this.sessionEntityState,
+    this.entityRecallService = const EntityRecallService(),
   });
 
   /// 对 ASR 原始文本执行纠错。
@@ -76,11 +92,12 @@ class CorrectionService {
       final matchHits = matcher.findMatchHits(rawSttText);
       matchesCount = matchHits.length;
 
-      if (matchHits.isEmpty) {
+      final entityBundle = _buildEntityBundle(rawSttText);
+      if (matchHits.isEmpty && !entityBundle.hasPromptData) {
         // 无匹配 → 跳过 LLM，直接输出
         await LogService.info(
           'CORRECTION',
-          'no dictionary matches, skipping LLM',
+          'no dictionary/entity matches, skipping LLM',
         );
         await _recordStatsSafely(
           matchesCount: 0,
@@ -99,10 +116,10 @@ class CorrectionService {
 
       final selectedHits = _selectHitsForReference(rawSttText, matchHits);
       selectedCount = selectedHits.length;
-      if (selectedHits.isEmpty) {
+      if (selectedHits.isEmpty && !entityBundle.hasPromptData) {
         await LogService.info(
           'CORRECTION',
-          'all matches filtered out locally, skipping LLM',
+          'all matches filtered out locally and no entity hints, skipping LLM',
         );
         await _recordStatsSafely(
           matchesCount: matchesCount,
@@ -114,7 +131,9 @@ class CorrectionService {
         return CorrectionResult(text: rawSttText);
       }
 
-      fallbackText = _normalizeMatchedTermsFromHits(rawSttText, selectedHits);
+      fallbackText = selectedHits.isEmpty
+          ? rawSttText
+          : _normalizeMatchedTermsFromHits(rawSttText, selectedHits);
 
       // 2. 构建 #R 引用表
       final referenceStr = _buildReferenceStringFromHits(selectedHits);
@@ -138,6 +157,8 @@ class CorrectionService {
         reference: finalReference,
         input: rawSttText,
         contextStr: context.getContextString(),
+        entitySection: entityBundle.correctionEntitySection,
+        relationSection: entityBundle.correctionRelationSection,
       );
 
       // 4. 调用 LLM
@@ -152,10 +173,12 @@ class CorrectionService {
         correctedText = fallbackText;
       }
 
-      correctedText = _normalizeMatchedTermsFromHits(
-        correctedText,
-        selectedHits,
-      );
+      if (selectedHits.isNotEmpty) {
+        correctedText = _normalizeMatchedTermsFromHits(
+          correctedText,
+          selectedHits,
+        );
+      }
 
       // 5. 记录 Token 消耗
       if (result.totalTokens > 0) {
@@ -182,6 +205,13 @@ class CorrectionService {
       // 7. 自动提取新的同音字映射到 SessionGlossary
       if (sessionGlossary != null && correctedText != rawSttText) {
         sessionGlossary!.extractAndPin(rawSttText, correctedText);
+      }
+      if (sessionEntityState != null) {
+        entityRecallService.activateMentions(
+          text: correctedText,
+          bundle: entityBundle,
+          sessionState: sessionEntityState!,
+        );
       }
 
       await LogService.info(
@@ -237,30 +267,33 @@ class CorrectionService {
 
     try {
       final matchHits = matcher.findMatchHits(paragraphText);
+      final entityBundle = _buildEntityBundle(
+        paragraphText,
+        contextStr: previousParagraph,
+      );
 
-      if (matchHits.isEmpty) {
+      if (matchHits.isEmpty && !entityBundle.hasPromptData) {
         await LogService.info(
           'CORRECTION',
-          'retrospective: no dictionary matches, skipping',
+          'retrospective: no dictionary/entity matches, skipping',
         );
         await _recordRetroSafely(llmInvoked: false, textChanged: false);
         return CorrectionResult(text: paragraphText);
       }
 
       final selectedHits = _selectHitsForReference(paragraphText, matchHits);
-      if (selectedHits.isEmpty) {
+      if (selectedHits.isEmpty && !entityBundle.hasPromptData) {
         await LogService.info(
           'CORRECTION',
-          'retrospective: all matches filtered, skipping',
+          'retrospective: all matches filtered and no entity hints, skipping',
         );
         await _recordRetroSafely(llmInvoked: false, textChanged: false);
         return CorrectionResult(text: paragraphText);
       }
 
-      final fallbackText = _normalizeMatchedTermsFromHits(
-        paragraphText,
-        selectedHits,
-      );
+      final fallbackText = selectedHits.isEmpty
+          ? paragraphText
+          : _normalizeMatchedTermsFromHits(paragraphText, selectedHits);
 
       final referenceStr = _buildReferenceStringFromHits(selectedHits);
 
@@ -273,6 +306,8 @@ class CorrectionService {
         reference: referenceStr,
         input: paragraphText,
         contextStr: contextStr,
+        entitySection: entityBundle.correctionEntitySection,
+        relationSection: entityBundle.correctionRelationSection,
       );
 
       final correctionConfig = aiConfig.copyWith(prompt: correctionPrompt);
@@ -284,10 +319,12 @@ class CorrectionService {
         correctedText = fallbackText;
       }
 
-      correctedText = _normalizeMatchedTermsFromHits(
-        correctedText,
-        selectedHits,
-      );
+      if (selectedHits.isNotEmpty) {
+        correctedText = _normalizeMatchedTermsFromHits(
+          correctedText,
+          selectedHits,
+        );
+      }
 
       if (result.totalTokens > 0) {
         try {
@@ -391,14 +428,38 @@ class CorrectionService {
     required String reference,
     required String input,
     required String contextStr,
+    String entitySection = '',
+    String relationSection = '',
   }) {
     final buf = StringBuffer();
     buf.writeln('#R: $reference');
     if (contextStr.isNotEmpty) {
       buf.writeln('#C: $contextStr');
     }
+    if (entitySection.trim().isNotEmpty) {
+      buf.writeln('#E:');
+      buf.writeln(entitySection.trim());
+    }
+    if (relationSection.trim().isNotEmpty) {
+      buf.writeln('#ER:');
+      buf.writeln(relationSection.trim());
+    }
     buf.writeln('#I: $input');
     return buf.toString().trim();
+  }
+
+  EntityPromptBundle _buildEntityBundle(String text, {String contextStr = ''}) {
+    if (entityMemories.isEmpty) return const EntityPromptBundle();
+    return entityRecallService.buildForCorrection(
+      currentText: text,
+      contextText: contextStr.isNotEmpty
+          ? contextStr
+          : context.getContextString(),
+      memories: entityMemories,
+      aliases: entityAliases,
+      relations: entityRelations,
+      sessionState: sessionEntityState ?? SessionEntityState(),
+    );
   }
 
   bool _containsChinese(String text) {

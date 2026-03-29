@@ -16,6 +16,7 @@ import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import 'context_page.dart';
+import 'entity_page.dart';
 
 class DictionaryPage extends StatefulWidget {
   const DictionaryPage({super.key});
@@ -127,7 +128,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
         .toList(growable: false);
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
         child: Column(
@@ -143,6 +144,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
                 tabs: [
                   Tab(text: l10n.dictionarySettings),
                   Tab(text: l10n.contextTab),
+                  const Tab(text: '实体'),
                 ],
                 labelColor: _cs.primary,
                 unselectedLabelColor: _cs.onSurfaceVariant,
@@ -170,6 +172,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
                     totalPages: totalPages,
                   ),
                   const ContextPage(embedded: true),
+                  const EntityPage(embedded: true),
                 ],
               ),
             ),
@@ -254,15 +257,11 @@ class _DictionaryPageState extends State<DictionaryPage> {
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: _cs.outlineVariant,
-                              ),
+                              borderSide: BorderSide(color: _cs.outlineVariant),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: _cs.outlineVariant,
-                              ),
+                              borderSide: BorderSide(color: _cs.outlineVariant),
                             ),
                             isDense: true,
                           ),
@@ -277,7 +276,10 @@ class _DictionaryPageState extends State<DictionaryPage> {
                           _buildDropdownFilter<_EntryStatusFilter>(
                             value: _statusFilter,
                             items: [
-                              (_EntryStatusFilter.all, l10n.dictionaryFilterAll),
+                              (
+                                _EntryStatusFilter.all,
+                                l10n.dictionaryFilterAll,
+                              ),
                               (
                                 _EntryStatusFilter.enabledOnly,
                                 l10n.dictionaryFilterEnabled,
@@ -315,7 +317,8 @@ class _DictionaryPageState extends State<DictionaryPage> {
                                 style: TextStyle(fontSize: 12),
                               ),
                               selected:
-                                  _selectedCategory == _historyCorrectionCategory,
+                                  _selectedCategory ==
+                                  _historyCorrectionCategory,
                               onSelected: (_) {
                                 setState(() {
                                   _selectedCategory =
@@ -596,11 +599,8 @@ class _DictionaryPageState extends State<DictionaryPage> {
                                       scale: 0.6,
                                       child: Switch(
                                         value: entry.enabled,
-                                        onChanged: (v) =>
-                                            settings.toggleDictionaryEntry(
-                                              entry.id,
-                                              v,
-                                            ),
+                                        onChanged: (v) => settings
+                                            .toggleDictionaryEntry(entry.id, v),
                                       ),
                                     ),
                                   ),
@@ -669,7 +669,8 @@ class _DictionaryPageState extends State<DictionaryPage> {
                                           _cs.tertiary,
                                         ),
                                       if (entry.source ==
-                                          DictionaryEntrySource.historyEdit) ...[
+                                          DictionaryEntrySource
+                                              .historyEdit) ...[
                                         if (entry.category != null &&
                                             entry.category!.isNotEmpty)
                                           const SizedBox(width: 4),
@@ -679,19 +680,24 @@ class _DictionaryPageState extends State<DictionaryPage> {
                                         ),
                                       ],
                                       if (entry.source ==
-                                          DictionaryEntrySource.markdownImport) ...[
+                                          DictionaryEntrySource
+                                              .markdownImport) ...[
                                         if ((entry.category != null &&
                                                 entry.category!.isNotEmpty) ||
                                             entry.source ==
                                                 DictionaryEntrySource
                                                     .historyEdit)
                                           const SizedBox(width: 4),
-                                        _buildMetaTag('Markdown导入', _cs.primary),
+                                        _buildMetaTag(
+                                          'Markdown导入',
+                                          _cs.primary,
+                                        ),
                                       ],
                                       if ((entry.category == null ||
                                               entry.category!.isEmpty) &&
                                           entry.source !=
-                                              DictionaryEntrySource.historyEdit &&
+                                              DictionaryEntrySource
+                                                  .historyEdit &&
                                           entry.source !=
                                               DictionaryEntrySource
                                                   .markdownImport)

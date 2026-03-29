@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../database/app_database.dart';
 import '../models/dictionary_entry.dart';
+import '../models/entity_alias.dart';
+import '../models/entity_memory.dart';
+import '../models/entity_relation.dart';
 import '../models/meeting.dart';
 import '../models/merged_note.dart';
 import '../models/provider_config.dart';
@@ -557,6 +560,18 @@ class MeetingProvider extends ChangeNotifier {
     _recordingService.applySessionGlossaryOverride(original, corrected);
   }
 
+  void activateSessionEntity({
+    required String entityId,
+    required String canonicalName,
+    required String alias,
+  }) {
+    _recordingService.activateSessionEntity(
+      entityId: entityId,
+      canonicalName: canonicalName,
+      alias: alias,
+    );
+  }
+
   /// 开始新会议
   Future<MeetingRecord> startMeeting({
     String? title,
@@ -568,6 +583,9 @@ class MeetingProvider extends ChangeNotifier {
     String dictionarySuffix = '',
     List<DictionaryEntry> dictionaryEntries = const [],
     List<TermContextEntry> termContextEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
     PinyinMatcher? pinyinMatcher,
     String? correctionPrompt,
     int maxReferenceEntries = 15,
@@ -608,6 +626,9 @@ class MeetingProvider extends ChangeNotifier {
         windowSize: windowSize,
         dictionaryEntries: dictionaryEntries,
         termContextEntries: termContextEntries,
+        entityMemories: entityMemories,
+        entityAliases: entityAliases,
+        entityRelations: entityRelations,
         pinyinMatcher: pinyinMatcher,
         correctionPrompt: correctionPrompt,
         maxReferenceEntries: maxReferenceEntries,

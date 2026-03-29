@@ -3,9 +3,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voicetype/models/ai_enhance_config.dart';
 import 'package:voicetype/models/dictionary_entry.dart';
+import 'package:voicetype/models/entity_alias.dart';
+import 'package:voicetype/models/entity_memory.dart';
+import 'package:voicetype/models/entity_relation.dart';
 import 'package:voicetype/services/correction_context.dart';
 import 'package:voicetype/services/correction_service.dart';
 import 'package:voicetype/services/pinyin_matcher.dart';
+import 'package:voicetype/services/session_entity_state.dart';
 import 'package:voicetype/services/session_glossary.dart';
 
 void main() {
@@ -118,6 +122,89 @@ void main() {
       expect(result.promptTokens, 50);
       expect(result.completionTokens, 20);
     });
+
+    test(
+      'calls LLM when entity context exists without dictionary hits',
+      () async {
+        matcher.buildIndex([]);
+        final zhang = EntityMemory.create(
+          canonicalName: '张三丰',
+          type: EntityType.person,
+        );
+        final li = EntityMemory.create(
+          canonicalName: '李四娃',
+          type: EntityType.person,
+        );
+        final sessionEntityState = SessionEntityState()
+          ..activate(entityId: zhang.id, canonicalName: '张三丰', alias: '接龙');
+
+        String capturedUserMessage = '';
+        server.listen((request) async {
+          final body = await utf8.decoder.bind(request).join();
+          final payload = json.decode(body) as Map<String, dynamic>;
+          final messages = payload['messages'] as List<dynamic>? ?? [];
+          capturedUserMessage = messages.isNotEmpty
+              ? (messages.last as Map<String, dynamic>)['content'] as String? ??
+                    ''
+              : '';
+          final responseJson = json.encode({
+            'choices': [
+              {
+                'message': {'content': '快走，张三丰啊，李四娃马上出来了。'},
+              },
+            ],
+            'usage': {'prompt_tokens': 60, 'completion_tokens': 12},
+          });
+          request.response
+            ..statusCode = 200
+            ..headers.contentType = ContentType.json
+            ..write(responseJson);
+          await request.response.close();
+        });
+
+        final service = CorrectionService(
+          matcher: matcher,
+          context: context,
+          aiConfig: AiEnhanceConfig(
+            agentName: 'test',
+            baseUrl: baseUrl,
+            apiKey: 'test-key',
+            model: 'test-model',
+            prompt: '',
+          ),
+          correctionPrompt: '纠错 prompt',
+          entityMemories: [zhang, li],
+          entityAliases: [
+            EntityAlias.create(
+              entityId: zhang.id,
+              aliasText: '接龙',
+              aliasType: EntityAliasType.misrecognition,
+            ),
+            EntityAlias.create(
+              entityId: li.id,
+              aliasText: '金雨希',
+              aliasType: EntityAliasType.misrecognition,
+            ),
+          ],
+          entityRelations: [
+            EntityRelation.create(
+              sourceEntityId: zhang.id,
+              targetEntityId: li.id,
+              relationType: '哥哥',
+            ),
+          ],
+          sessionEntityState: sessionEntityState,
+        );
+
+        final result = await service.correct('快走，接龙啊，金雨希马上出来了。');
+        expect(result.llmInvoked, isTrue);
+        expect(result.text, '快走，张三丰啊，李四娃马上出来了。');
+        expect(capturedUserMessage, contains('#E:'));
+        expect(capturedUserMessage, contains('张三丰 | type=person'));
+        expect(capturedUserMessage, contains('#ER:'));
+        expect(capturedUserMessage, contains('张三丰 -> 李四娃 : 哥哥'));
+      },
+    );
 
     test('calls LLM when only pinyinPattern rule matches', () async {
       matcher.buildIndex([

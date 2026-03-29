@@ -486,6 +486,9 @@ class _MainScreenState extends State<MainScreen> {
         dictionarySuffix: settings.dictionaryWordsForPrompt,
         dictionaryEntries: settings.dictionaryEntries,
         termContextEntries: settings.termContextEntries,
+        entityMemories: settings.entityMemories,
+        entityAliases: settings.entityAliases,
+        entityRelations: settings.entityRelations,
         pinyinMatcher: settings.correctionEffective
             ? settings.pinyinMatcher
             : null,
@@ -510,6 +513,9 @@ class _MainScreenState extends State<MainScreen> {
         correctionPrompt: settings.correctionPrompt,
         dictionaryEntries: settings.dictionaryEntries,
         termContextEntries: settings.termContextEntries,
+        entityMemories: settings.entityMemories,
+        entityAliases: settings.entityAliases,
+        entityRelations: settings.entityRelations,
         maxReferenceEntries: settings.correctionMaxReferenceEntries,
         minCandidateScore: settings.correctionMinCandidateScore,
       );

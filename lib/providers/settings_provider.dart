@@ -9,6 +9,10 @@ import '../models/ai_vendor_preset.dart';
 import '../models/network_settings.dart';
 import '../models/dictionary_entry.dart';
 import '../models/dictation_term_pending_candidate.dart';
+import '../models/entity_alias.dart';
+import '../models/entity_evidence.dart';
+import '../models/entity_memory.dart';
+import '../models/entity_relation.dart';
 import '../models/imported_reference_term.dart';
 import '../models/markdown_term_import_result.dart';
 import '../models/prompt_template.dart';
@@ -21,6 +25,8 @@ import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/audio_recorder.dart';
 import '../services/local_llm_service.dart';
+import '../services/entity_dictionary_bridge.dart';
+import '../services/entity_learning_service.dart';
 import '../services/markdown_term_import_service.dart';
 
 class DictionaryCsvImportResult {
@@ -66,6 +72,10 @@ class SettingsProvider extends ChangeNotifier {
   static const _dictationTermPendingCandidatesKey =
       'dictation_term_pending_candidates_v1';
   static const _termContextEntriesKey = 'term_context_entries_v1';
+  static const _entityMemoriesKey = 'entity_memories_v1';
+  static const _entityAliasesKey = 'entity_aliases_v1';
+  static const _entityRelationsKey = 'entity_relations_v1';
+  static const _entityEvidencesKey = 'entity_evidences_v1';
   static const _importedReferenceTermsKey = 'imported_reference_terms_v1';
   static const _correctionEnabledKey = 'correction_enabled';
   static const _retrospectiveCorrectionEnabledKey =
@@ -139,6 +149,10 @@ class SettingsProvider extends ChangeNotifier {
   List<DictionaryEntry> _dictionaryEntries = [];
   List<DictationTermPendingCandidate> _dictationTermPendingCandidates = [];
   List<TermContextEntry> _termContextEntries = [];
+  List<EntityMemory> _entityMemories = [];
+  List<EntityAlias> _entityAliases = [];
+  List<EntityRelation> _entityRelations = [];
+  List<EntityEvidence> _entityEvidences = [];
 
   // Correction settings
   bool _correctionEnabled = true;
@@ -151,6 +165,10 @@ class SettingsProvider extends ChangeNotifier {
   );
   static const MarkdownTermImportService _markdownTermImportService =
       MarkdownTermImportService();
+  static const EntityLearningService _entityLearningService =
+      EntityLearningService();
+  static const EntityDictionaryBridge _entityDictionaryBridge =
+      EntityDictionaryBridge();
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -218,6 +236,12 @@ class SettingsProvider extends ChangeNotifier {
       List.unmodifiable(_dictationTermPendingCandidates);
   List<TermContextEntry> get termContextEntries =>
       List.unmodifiable(_termContextEntries);
+  List<EntityMemory> get entityMemories => List.unmodifiable(_entityMemories);
+  List<EntityAlias> get entityAliases => List.unmodifiable(_entityAliases);
+  List<EntityRelation> get entityRelations =>
+      List.unmodifiable(_entityRelations);
+  List<EntityEvidence> get entityEvidences =>
+      List.unmodifiable(_entityEvidences);
 
   // Correction getters
   bool get correctionEnabled => _correctionEnabled;
@@ -593,6 +617,61 @@ class SettingsProvider extends ChangeNotifier {
           }
         } catch (_) {}
       }
+    }
+
+    final entityMemoriesJson = await db.getSetting(_entityMemoriesKey);
+    if (entityMemoriesJson != null) {
+      try {
+        final list = json.decode(entityMemoriesJson) as List<dynamic>;
+        _entityMemories = list
+            .whereType<Map<String, dynamic>>()
+            .map(EntityMemory.fromJson)
+            .where((item) => item.canonicalName.isNotEmpty)
+            .toList(growable: false);
+      } catch (_) {}
+    }
+
+    final entityAliasesJson = await db.getSetting(_entityAliasesKey);
+    if (entityAliasesJson != null) {
+      try {
+        final list = json.decode(entityAliasesJson) as List<dynamic>;
+        _entityAliases = list
+            .whereType<Map<String, dynamic>>()
+            .map(EntityAlias.fromJson)
+            .where(
+              (item) => item.entityId.isNotEmpty && item.aliasText.isNotEmpty,
+            )
+            .toList(growable: false);
+      } catch (_) {}
+    }
+
+    final entityRelationsJson = await db.getSetting(_entityRelationsKey);
+    if (entityRelationsJson != null) {
+      try {
+        final list = json.decode(entityRelationsJson) as List<dynamic>;
+        _entityRelations = list
+            .whereType<Map<String, dynamic>>()
+            .map(EntityRelation.fromJson)
+            .where(
+              (item) =>
+                  item.sourceEntityId.isNotEmpty &&
+                  item.targetEntityId.isNotEmpty &&
+                  item.relationType.isNotEmpty,
+            )
+            .toList(growable: false);
+      } catch (_) {}
+    }
+
+    final entityEvidencesJson = await db.getSetting(_entityEvidencesKey);
+    if (entityEvidencesJson != null) {
+      try {
+        final list = json.decode(entityEvidencesJson) as List<dynamic>;
+        _entityEvidences = list
+            .whereType<Map<String, dynamic>>()
+            .map(EntityEvidence.fromJson)
+            .where((item) => item.entityId.isNotEmpty)
+            .toList(growable: false);
+      } catch (_) {}
     }
 
     // 构建拼音索引
@@ -1246,6 +1325,34 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> _saveEntityMemories() async {
+    await _saveSetting(
+      _entityMemoriesKey,
+      json.encode(_entityMemories.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _saveEntityAliases() async {
+    await _saveSetting(
+      _entityAliasesKey,
+      json.encode(_entityAliases.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _saveEntityRelations() async {
+    await _saveSetting(
+      _entityRelationsKey,
+      json.encode(_entityRelations.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _saveEntityEvidences() async {
+    await _saveSetting(
+      _entityEvidencesKey,
+      json.encode(_entityEvidences.map((e) => e.toJson()).toList()),
+    );
+  }
+
   /// 重建拼音索引（词典变更后调用）
   void _rebuildPinyinIndex() {
     _pinyinMatcher.buildIndex(_dictionaryEntries);
@@ -1739,7 +1846,10 @@ class SettingsProvider extends ChangeNotifier {
     String markdownContent, {
     required String fileName,
   }) {
-    return _markdownTermImportService.parse(markdownContent, fileName: fileName);
+    return _markdownTermImportService.parse(
+      markdownContent,
+      fileName: fileName,
+    );
   }
 
   Future<MarkdownTermImportResult> applyTermContextMarkdownImport(
@@ -1770,7 +1880,9 @@ class SettingsProvider extends ChangeNotifier {
       }
 
       final normalized = entry.copyWith(
-        sourceName: entry.sourceName.isEmpty ? result.fileName : entry.sourceName,
+        sourceName: entry.sourceName.isEmpty
+            ? result.fileName
+            : entry.sourceName,
       );
       _termContextEntries = [normalized, ..._termContextEntries];
       existingBySignature[normalized.signature] = normalized;
@@ -1791,7 +1903,9 @@ class SettingsProvider extends ChangeNotifier {
 
     return MarkdownTermImportResult(
       fileName: result.fileName,
-      contextEntries: result.contextEntries.map(resolve).toList(growable: false),
+      contextEntries: result.contextEntries
+          .map(resolve)
+          .toList(growable: false),
       promotableCorrections: result.promotableCorrections
           .map(resolve)
           .toList(growable: false),
@@ -1820,11 +1934,13 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> setTermContextEntryEnabled(String id, bool enabled) async {
     var changed = false;
-    _termContextEntries = _termContextEntries.map((entry) {
-      if (entry.id != id || entry.enabled == enabled) return entry;
-      changed = true;
-      return entry.copyWith(enabled: enabled);
-    }).toList(growable: false);
+    _termContextEntries = _termContextEntries
+        .map((entry) {
+          if (entry.id != id || entry.enabled == enabled) return entry;
+          changed = true;
+          return entry.copyWith(enabled: enabled);
+        })
+        .toList(growable: false);
     if (!changed) return;
     await _saveTermContextEntries();
     notifyListeners();
@@ -1838,7 +1954,9 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<DictionaryEntry?> promoteTermContextEntryToDictionary(String id) async {
+  Future<DictionaryEntry?> promoteTermContextEntryToDictionary(
+    String id,
+  ) async {
     TermContextEntry? entry;
     for (final item in _termContextEntries) {
       if (item.id == id) {
@@ -1862,11 +1980,13 @@ class SettingsProvider extends ChangeNotifier {
       return null;
     }
 
-    final existing = _dictionaryEntries.where((item) {
-      return item.type == DictionaryEntryType.preserve &&
-          item.original.trim().toLowerCase() ==
-              selectedEntry.promptTerm.toLowerCase();
-    }).toList(growable: false);
+    final existing = _dictionaryEntries
+        .where((item) {
+          return item.type == DictionaryEntryType.preserve &&
+              item.original.trim().toLowerCase() ==
+                  selectedEntry.promptTerm.toLowerCase();
+        })
+        .toList(growable: false);
 
     if (existing.isNotEmpty) {
       final found = existing.first;
@@ -1885,6 +2005,315 @@ class SettingsProvider extends ChangeNotifier {
     );
     await addDictionaryEntry(created);
     return created;
+  }
+
+  EntityMemory? findEntityByCanonicalName(String canonicalName) {
+    final normalized = canonicalName.trim().toLowerCase();
+    for (final item in _entityMemories) {
+      if (item.canonicalName.trim().toLowerCase() == normalized) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  List<EntityAlias> aliasesForEntity(String entityId) {
+    return _entityAliases
+        .where((alias) => alias.entityId == entityId)
+        .toList(growable: false);
+  }
+
+  List<EntityEvidence> evidencesForEntity(String entityId) {
+    return _entityEvidences
+        .where((evidence) => evidence.entityId == entityId)
+        .toList(growable: false)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  EntityEvidence? latestEvidenceForEntity(String entityId) {
+    final evidences = evidencesForEntity(entityId);
+    if (evidences.isEmpty) return null;
+    return evidences.first;
+  }
+
+  Future<EntityMemory> upsertEntityMemory({
+    required String canonicalName,
+    required EntityType type,
+    double confidence = 0.85,
+  }) async {
+    final normalized = canonicalName.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError('canonicalName must not be empty');
+    }
+    for (final item in _entityMemories) {
+      if (item.canonicalName.trim().toLowerCase() == normalized.toLowerCase()) {
+        final updated = item.copyWith(
+          type: type,
+          enabled: true,
+          confidence: confidence > item.confidence
+              ? confidence
+              : item.confidence,
+          updatedAt: DateTime.now(),
+        );
+        _entityMemories = _entityMemories
+            .map((entry) => entry.id == item.id ? updated : entry)
+            .toList(growable: false);
+        await _saveEntityMemories();
+        notifyListeners();
+        return updated;
+      }
+    }
+    final created = EntityMemory.create(
+      canonicalName: normalized,
+      type: type,
+      confidence: confidence,
+    );
+    _entityMemories = [created, ..._entityMemories];
+    await _saveEntityMemories();
+    notifyListeners();
+    return created;
+  }
+
+  Future<EntityMemory> updateEntityMemory({
+    required String entityId,
+    required String canonicalName,
+    required EntityType type,
+    required bool enabled,
+    required double confidence,
+  }) async {
+    final normalized = canonicalName.trim();
+    if (entityId.trim().isEmpty || normalized.isEmpty) {
+      throw ArgumentError('entityId/canonicalName must not be empty');
+    }
+    EntityMemory? updated;
+    _entityMemories = _entityMemories
+        .map((item) {
+          if (item.id != entityId) return item;
+          updated = item.copyWith(
+            canonicalName: normalized,
+            type: type,
+            enabled: enabled,
+            confidence: confidence.clamp(0.0, 1.0).toDouble(),
+            updatedAt: DateTime.now(),
+          );
+          return updated!;
+        })
+        .toList(growable: false);
+    if (updated == null) {
+      throw ArgumentError('entity not found: $entityId');
+    }
+    await _saveEntityMemories();
+    await addOrMergeEntityAlias(
+      entityId: entityId,
+      aliasText: normalized,
+      aliasType: EntityAliasType.fullName,
+      source: 'manual',
+      confidence: 1.0,
+    );
+    notifyListeners();
+    return updated!;
+  }
+
+  Future<EntityAlias> addOrMergeEntityAlias({
+    required String entityId,
+    required String aliasText,
+    required EntityAliasType aliasType,
+    required String source,
+    double confidence = 0.8,
+  }) async {
+    final normalized = aliasText.trim();
+    if (entityId.trim().isEmpty || normalized.isEmpty) {
+      throw ArgumentError('entityId/aliasText must not be empty');
+    }
+    for (final item in _entityAliases) {
+      if (item.entityId == entityId &&
+          item.aliasText.trim().toLowerCase() == normalized.toLowerCase()) {
+        final updated = item.copyWith(
+          aliasType: aliasType,
+          source: source,
+          confidence: confidence > item.confidence
+              ? confidence
+              : item.confidence,
+          createdAt: DateTime.now(),
+        );
+        _entityAliases = _entityAliases
+            .map((entry) => entry.id == item.id ? updated : entry)
+            .toList(growable: false);
+        await _saveEntityAliases();
+        notifyListeners();
+        return updated;
+      }
+    }
+    final created = EntityAlias.create(
+      entityId: entityId,
+      aliasText: normalized,
+      aliasType: aliasType,
+      source: source,
+      confidence: confidence,
+    );
+    _entityAliases = [created, ..._entityAliases];
+    await _saveEntityAliases();
+    notifyListeners();
+    return created;
+  }
+
+  Future<EntityEvidence> addEntityEvidence({
+    required String entityId,
+    required String sourceType,
+    required String sourceRef,
+    required String beforeText,
+    required String afterText,
+    required String extractedAlias,
+  }) async {
+    final created = EntityEvidence.create(
+      entityId: entityId,
+      sourceType: sourceType,
+      sourceRef: sourceRef,
+      beforeText: beforeText,
+      afterText: afterText,
+      extractedAlias: extractedAlias,
+    );
+    _entityEvidences = [created, ..._entityEvidences];
+    await _saveEntityEvidences();
+    notifyListeners();
+    return created;
+  }
+
+  Future<List<EntityMemory>> learnEntitiesFromHistoryEdit({
+    required String beforeText,
+    required String afterText,
+    String? rawText,
+    String sourceHistoryId = '',
+  }) async {
+    final candidates = _entityLearningService.extractCandidates(
+      beforeText: beforeText,
+      afterText: afterText,
+      rawText: rawText,
+    );
+    if (candidates.isEmpty) return const [];
+
+    final learned = <EntityMemory>[];
+    for (final candidate in candidates) {
+      final entity = await upsertEntityMemory(
+        canonicalName: candidate.canonicalName,
+        type: candidate.entityType,
+        confidence: candidate.confidence,
+      );
+      await addOrMergeEntityAlias(
+        entityId: entity.id,
+        aliasText: entity.canonicalName,
+        aliasType: EntityAliasType.fullName,
+        source: 'entity-memory',
+        confidence: 1.0,
+      );
+      final alias = await addOrMergeEntityAlias(
+        entityId: entity.id,
+        aliasText: candidate.original,
+        aliasType: candidate.aliasType,
+        source: 'history-edit',
+        confidence: candidate.confidence,
+      );
+      await addEntityEvidence(
+        entityId: entity.id,
+        sourceType: 'history-edit',
+        sourceRef: sourceHistoryId,
+        beforeText: beforeText,
+        afterText: afterText,
+        extractedAlias: candidate.original,
+      );
+      if (_entityDictionaryBridge.shouldBridge(
+        aliasType: alias.aliasType,
+        aliasText: alias.aliasText,
+        canonicalName: entity.canonicalName,
+        confidence: alias.confidence,
+      )) {
+        await upsertDictionaryCorrectionEntry(
+          original: alias.aliasText,
+          corrected: entity.canonicalName,
+          category: '实体桥接',
+          source: DictionaryEntrySource.historyEdit,
+        );
+      }
+      learned.add(entity);
+    }
+    return learned;
+  }
+
+  Future<EntityMemory> addManualEntity({
+    required String canonicalName,
+    required EntityType type,
+    List<String> aliases = const [],
+    EntityAliasType aliasType = EntityAliasType.alias,
+    double confidence = 0.95,
+  }) async {
+    final entity = await upsertEntityMemory(
+      canonicalName: canonicalName,
+      type: type,
+      confidence: confidence,
+    );
+    await addOrMergeEntityAlias(
+      entityId: entity.id,
+      aliasText: entity.canonicalName,
+      aliasType: EntityAliasType.fullName,
+      source: 'manual',
+      confidence: 1.0,
+    );
+    for (final alias in aliases) {
+      final normalized = alias.trim();
+      if (normalized.isEmpty || normalized == entity.canonicalName) continue;
+      await addOrMergeEntityAlias(
+        entityId: entity.id,
+        aliasText: normalized,
+        aliasType: aliasType,
+        source: 'manual',
+        confidence: confidence >= 0.95 ? 0.95 : 0.85,
+      );
+      await addEntityEvidence(
+        entityId: entity.id,
+        sourceType: 'manual',
+        sourceRef: 'entity-page',
+        beforeText: normalized,
+        afterText: entity.canonicalName,
+        extractedAlias: normalized,
+      );
+    }
+    return entity;
+  }
+
+  Future<void> deleteEntity(String entityId) async {
+    final nextMemories = _entityMemories
+        .where((entity) => entity.id != entityId)
+        .toList(growable: false);
+    if (nextMemories.length == _entityMemories.length) return;
+    _entityMemories = nextMemories;
+    _entityAliases = _entityAliases
+        .where((alias) => alias.entityId != entityId)
+        .toList(growable: false);
+    _entityRelations = _entityRelations
+        .where(
+          (relation) =>
+              relation.sourceEntityId != entityId &&
+              relation.targetEntityId != entityId,
+        )
+        .toList(growable: false);
+    _entityEvidences = _entityEvidences
+        .where((evidence) => evidence.entityId != entityId)
+        .toList(growable: false);
+    await _saveEntityMemories();
+    await _saveEntityAliases();
+    await _saveEntityRelations();
+    await _saveEntityEvidences();
+    notifyListeners();
+  }
+
+  Future<void> deleteEntityAlias(String aliasId) async {
+    final next = _entityAliases
+        .where((alias) => alias.id != aliasId)
+        .toList(growable: false);
+    if (next.length == _entityAliases.length) return;
+    _entityAliases = next;
+    await _saveEntityAliases();
+    notifyListeners();
   }
 
   String _csvCellToString(dynamic value) {

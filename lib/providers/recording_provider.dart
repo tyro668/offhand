@@ -5,6 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import '../models/dictionary_entry.dart';
+import '../models/entity_alias.dart';
+import '../models/entity_memory.dart';
+import '../models/entity_relation.dart';
 import '../models/stt_request_context.dart';
 import '../models/term_context_entry.dart';
 import '../models/transcription.dart';
@@ -24,6 +27,7 @@ import '../services/pinyin_matcher.dart';
 import '../services/session_glossary.dart';
 import '../services/correction_stats_service.dart';
 import '../services/context_recall_service.dart';
+import '../services/session_entity_state.dart';
 import '../services/term_prompt_builder.dart';
 
 enum RecordingState { idle, recording, transcribing }
@@ -67,11 +71,15 @@ class RecordingProvider extends ChangeNotifier {
   CorrectionService? _correctionService;
   final CorrectionContext _correctionContext = CorrectionContext();
   final SessionGlossary _sessionGlossary = SessionGlossary();
+  final SessionEntityState _sessionEntityState = SessionEntityState();
   static const ContextRecallService _contextRecallService =
       ContextRecallService();
   bool _retrospectiveCorrectionEnabled = false;
   List<DictionaryEntry> _dictionaryEntries = const [];
   List<TermContextEntry> _termContextEntries = const [];
+  List<EntityMemory> _entityMemories = const [];
+  List<EntityAlias> _entityAliases = const [];
+  List<EntityRelation> _entityRelations = const [];
   final TermPromptBuilder _termPromptBuilder = const TermPromptBuilder();
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
@@ -94,11 +102,17 @@ class RecordingProvider extends ChangeNotifier {
     required String correctionPrompt,
     List<DictionaryEntry> dictionaryEntries = const [],
     List<TermContextEntry> termContextEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
     int maxReferenceEntries = 15,
     double minCandidateScore = 0.30,
   }) {
     _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
     _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+    _entityMemories = List<EntityMemory>.from(entityMemories);
+    _entityAliases = List<EntityAlias>.from(entityAliases);
+    _entityRelations = List<EntityRelation>.from(entityRelations);
     _correctionService = CorrectionService(
       matcher: matcher,
       context: _correctionContext,
@@ -107,6 +121,10 @@ class RecordingProvider extends ChangeNotifier {
       maxReferenceEntries: maxReferenceEntries,
       minCandidateScore: minCandidateScore,
       sessionGlossary: _sessionGlossary,
+      entityMemories: _entityMemories,
+      entityAliases: _entityAliases,
+      entityRelations: _entityRelations,
+      sessionEntityState: _sessionEntityState,
     );
   }
 
@@ -115,6 +133,9 @@ class RecordingProvider extends ChangeNotifier {
     _correctionService = null;
     _dictionaryEntries = const [];
     _termContextEntries = const [];
+    _entityMemories = const [];
+    _entityAliases = const [];
+    _entityRelations = const [];
   }
 
   /// 设置终态回溯纠错开关。
@@ -125,6 +146,18 @@ class RecordingProvider extends ChangeNotifier {
   /// 手动覆盖会话术语映射（由词典页编辑触发）。
   void applySessionGlossaryOverride(String original, String corrected) {
     _sessionGlossary.override(original, corrected);
+  }
+
+  void activateSessionEntity({
+    required String entityId,
+    required String canonicalName,
+    required String alias,
+  }) {
+    _sessionEntityState.activate(
+      entityId: entityId,
+      canonicalName: canonicalName,
+      alias: alias,
+    );
   }
 
   Future<void> _flushGlossaryStats() async {
@@ -222,6 +255,7 @@ class RecordingProvider extends ChangeNotifier {
     _correctionContext.reset();
     unawaited(_flushGlossaryStats());
     _sessionGlossary.reset();
+    _sessionEntityState.reset();
 
     // 无论当前状态如何，都先 reset recorder，确保干净状态
     await LogService.info('RECORDING', 'resetting recorder');
@@ -430,7 +464,11 @@ class RecordingProvider extends ChangeNotifier {
       history: _history,
       dictionaryEntries: _dictionaryEntries,
       sessionGlossary: _sessionGlossary,
+      sessionEntityState: _sessionEntityState,
       termContextEntries: _termContextEntries,
+      entityMemories: _entityMemories,
+      entityAliases: _entityAliases,
+      entityRelations: _entityRelations,
     );
     if (!bundle.hasPrompt) return null;
     return SttRequestContext(

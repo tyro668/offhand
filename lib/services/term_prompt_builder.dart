@@ -1,15 +1,22 @@
 import '../models/dictionary_entry.dart';
+import '../models/entity_alias.dart';
+import '../models/entity_memory.dart';
+import '../models/entity_relation.dart';
 import '../models/term_context_entry.dart';
 import '../models/term_prompt_bundle.dart';
 import '../models/transcription.dart';
+import 'entity_recall_service.dart';
 import 'session_glossary.dart';
+import 'session_entity_state.dart';
 import 'term_recall_service.dart';
 
 class TermPromptBuilder {
   final TermRecallService recallService;
+  final EntityRecallService entityRecallService;
 
   const TermPromptBuilder({
     this.recallService = const TermRecallService(),
+    this.entityRecallService = const EntityRecallService(),
   });
 
   TermPromptBundle build({
@@ -18,7 +25,11 @@ class TermPromptBuilder {
     required List<Transcription> history,
     required List<DictionaryEntry> dictionaryEntries,
     required SessionGlossary sessionGlossary,
+    SessionEntityState? sessionEntityState,
     List<TermContextEntry> termContextEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
     int maxTerms = TermRecallService.defaultMaxTerms,
   }) {
     final contextDocuments = _selectContextDocuments(termContextEntries);
@@ -31,11 +42,29 @@ class TermPromptBuilder {
       maxTerms: maxTerms,
     );
 
-    if (preferredTerms.isEmpty && contextDocuments.isEmpty) {
+    final entityBundle = entityRecallService.buildForStt(
+      currentText: currentText,
+      historyTexts: history.take(5).map((e) => e.text).toList(growable: false),
+      contextTexts: contextDocuments
+          .map((e) => _truncateContext(e.content ?? ''))
+          .toList(growable: false),
+      memories: entityMemories,
+      aliases: entityAliases,
+      relations: entityRelations,
+      sessionState: sessionEntityState ?? SessionEntityState(),
+    );
+
+    if (preferredTerms.isEmpty &&
+        contextDocuments.isEmpty &&
+        !entityBundle.hasPromptData) {
       return const TermPromptBundle();
     }
 
-    final preserveTerms = preferredTerms.toList(growable: false);
+    final mergedPreferredTerms = <String>[
+      ...preferredTerms,
+      ...entityBundle.entities.map((e) => e.memory.canonicalName),
+    ].toSet().toList(growable: false);
+    final preserveTerms = mergedPreferredTerms.toList(growable: false);
     final correctionReferences = _buildCorrectionReferences(
       dictionaryEntries,
       sessionGlossary,
@@ -44,9 +73,9 @@ class TermPromptBuilder {
     final prompt = StringBuffer()
       ..writeln('请将这段音频准确转写为纯文本，仅返回转写结果。')
       ..writeln('当前场景：$scene。');
-    if (preferredTerms.isNotEmpty) {
+    if (mergedPreferredTerms.isNotEmpty) {
       prompt.writeln('优先识别并保持以下术语写法：');
-      for (final term in preferredTerms) {
+      for (final term in mergedPreferredTerms) {
         prompt.writeln('- $term');
       }
       prompt.writeln('若听到相近发音，优先输出上述写法。');
@@ -58,12 +87,17 @@ class TermPromptBuilder {
         prompt.writeln(_truncateContext(entry.content ?? ''));
       }
     }
+    if (entityBundle.sttSection.trim().isNotEmpty) {
+      prompt.writeln(entityBundle.sttSection.trim());
+    }
 
     return TermPromptBundle(
       sttPrompt: prompt.toString().trim(),
-      preferredTerms: preferredTerms,
+      preferredTerms: mergedPreferredTerms,
       preserveTerms: preserveTerms,
       correctionReferences: correctionReferences,
+      entityCorrectionSection: entityBundle.correctionEntitySection,
+      entityRelationSection: entityBundle.correctionRelationSection,
     );
   }
 

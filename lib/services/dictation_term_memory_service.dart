@@ -113,8 +113,9 @@ class DictationTermMemoryService {
       return false;
     }
 
-    final noisePattern = RegExp(r'^[\W_]+$');
-    if (noisePattern.hasMatch(original) || noisePattern.hasMatch(corrected)) {
+    final contentPattern = RegExp(r'[\u4e00-\u9fffA-Za-z0-9]');
+    if (!contentPattern.hasMatch(original) ||
+        !contentPattern.hasMatch(corrected)) {
       return false;
     }
 

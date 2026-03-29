@@ -5,6 +5,9 @@ import '../database/app_database.dart';
 import '../models/meeting.dart';
 import '../models/merged_note.dart';
 import '../models/dictionary_entry.dart';
+import '../models/entity_alias.dart';
+import '../models/entity_memory.dart';
+import '../models/entity_relation.dart';
 import '../models/provider_config.dart';
 import '../models/ai_enhance_config.dart';
 import '../models/stt_request_context.dart';
@@ -22,6 +25,7 @@ import 'pinyin_matcher.dart';
 import 'vad_service.dart';
 import 'correction_stats_service.dart';
 import 'incremental_summary_service.dart';
+import 'session_entity_state.dart';
 import 'term_prompt_builder.dart';
 
 /// 会议录音服务 — 管理分段录音与自动转文字流水线
@@ -114,6 +118,18 @@ class MeetingRecordingService {
     _sessionGlossary.override(original, corrected);
   }
 
+  void activateSessionEntity({
+    required String entityId,
+    required String canonicalName,
+    required String alias,
+  }) {
+    _sessionEntityState.activate(
+      entityId: entityId,
+      canonicalName: canonicalName,
+      alias: alias,
+    );
+  }
+
   Future<void> _flushGlossaryStats() async {
     try {
       await CorrectionStatsService.instance.flushGlossaryStats(
@@ -135,6 +151,9 @@ class MeetingRecordingService {
   bool _aiEnhanceEnabled = false;
   List<DictionaryEntry> _dictionaryEntries = const [];
   List<TermContextEntry> _termContextEntries = const [];
+  List<EntityMemory> _entityMemories = const [];
+  List<EntityAlias> _entityAliases = const [];
+  List<EntityRelation> _entityRelations = const [];
   final TermPromptBuilder _termPromptBuilder = const TermPromptBuilder();
 
   /// 滑动窗口合并器
@@ -171,6 +190,7 @@ class MeetingRecordingService {
   CorrectionService? _correctionService;
   final CorrectionContext _correctionContext = CorrectionContext();
   final SessionGlossary _sessionGlossary = SessionGlossary();
+  final SessionEntityState _sessionEntityState = SessionEntityState();
 
   /// 开始新的会议录音
   Future<MeetingRecord> startMeeting({
@@ -182,6 +202,9 @@ class MeetingRecordingService {
     int windowSize = 5,
     List<DictionaryEntry> dictionaryEntries = const [],
     List<TermContextEntry> termContextEntries = const [],
+    List<EntityMemory> entityMemories = const [],
+    List<EntityAlias> entityAliases = const [],
+    List<EntityRelation> entityRelations = const [],
     PinyinMatcher? pinyinMatcher,
     String? correctionPrompt,
     int maxReferenceEntries = 15,
@@ -200,6 +223,9 @@ class MeetingRecordingService {
     _aiEnhanceEnabled = aiEnhanceEnabled;
     _dictionaryEntries = List<DictionaryEntry>.from(dictionaryEntries);
     _termContextEntries = List<TermContextEntry>.from(termContextEntries);
+    _entityMemories = List<EntityMemory>.from(entityMemories);
+    _entityAliases = List<EntityAlias>.from(entityAliases);
+    _entityRelations = List<EntityRelation>.from(entityRelations);
 
     // 智能分段参数
     _softMinSeconds = softMinSeconds;
@@ -220,6 +246,7 @@ class MeetingRecordingService {
     _correctionContext.reset();
     unawaited(_flushGlossaryStats());
     _sessionGlossary.reset();
+    _sessionEntityState.reset();
     if (pinyinMatcher != null &&
         aiConfig != null &&
         correctionPrompt != null &&
@@ -232,6 +259,10 @@ class MeetingRecordingService {
         maxReferenceEntries: maxReferenceEntries,
         minCandidateScore: minCandidateScore,
         sessionGlossary: _sessionGlossary,
+        entityMemories: _entityMemories,
+        entityAliases: _entityAliases,
+        entityRelations: _entityRelations,
+        sessionEntityState: _sessionEntityState,
       );
     } else {
       _correctionService = null;
@@ -839,7 +870,11 @@ class MeetingRecordingService {
       history: const [],
       dictionaryEntries: _dictionaryEntries,
       sessionGlossary: _sessionGlossary,
+      sessionEntityState: _sessionEntityState,
       termContextEntries: _termContextEntries,
+      entityMemories: _entityMemories,
+      entityAliases: _entityAliases,
+      entityRelations: _entityRelations,
     );
     if (!bundle.hasPrompt) return null;
     return SttRequestContext(
