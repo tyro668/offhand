@@ -75,7 +75,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildEmptyState() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -84,7 +84,7 @@ class _DashboardPageState extends State<DashboardPage> {
             title: _l10n.noDataYet,
             description: '开始一次录音或会议后，这里会逐步形成你的使用概览与趋势数据。',
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           _buildCorrectionChangeLogsSection(),
         ],
       ),
@@ -95,28 +95,28 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeroStats(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildPeriodAndActivityRow(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildTokenSection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildCorrectionEfficiencySection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildCorrectionChangeLogsSection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildRetrospectiveSection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildGlossarySection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildTrendSection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildDistributionSection(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
         ],
       ),
     );
@@ -130,74 +130,47 @@ class _DashboardPageState extends State<DashboardPage> {
         icon: Icons.mic_none_rounded,
         label: _l10n.totalTranscriptions,
         value: _formatNumber(_stats.totalCount),
-        gradient: [_cs.primary, _cs.primary.withValues(alpha: 0.7)],
+        color: const Color(0xFF2F6CE5),
       ),
       _HeroData(
         icon: Icons.timer_outlined,
         label: _l10n.totalRecordingTime,
         value: _formatDuration(_stats.totalDurationMs),
-        gradient: [_cs.tertiary, _cs.tertiary.withValues(alpha: 0.7)],
+        color: const Color(0xFF1D4ED8),
       ),
       _HeroData(
         icon: Icons.text_fields_rounded,
         label: _l10n.totalCharacters,
         value: _formatNumber(_stats.totalCharCount),
-        gradient: [_cs.secondary, _cs.secondary.withValues(alpha: 0.7)],
+        color: const Color(0xFF2563EB),
       ),
       _HeroData(
         icon: Icons.speed_rounded,
         label: _l10n.charsPerMinute,
         value: _stats.avgCharsPerMinute.toStringAsFixed(1),
-        gradient: [Colors.orange, Colors.orange.shade300],
+        color: const Color(0xFFEA7A18),
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 980;
-        if (compact) {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: _buildHeroCard(items[0])),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildHeroCard(items[1])),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _buildHeroCard(items[2])),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildHeroCard(items[3])),
-                ],
-              ),
-            ],
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: items.map((item) {
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: item == items.last ? 0 : 10),
+              child: _buildHeroCard(item),
+            ),
           );
-        }
-
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: items.map((item) {
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: item == items.last ? 0 : 12),
-                  child: _buildHeroCard(item),
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      },
+        }).toList(),
+      ),
     );
   }
 
   Widget _buildHeroCard(_HeroData data) {
     return ModernSurfaceCard(
-      radius: 20,
-      padding: const EdgeInsets.all(18),
+      radius: 16,
+      padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
       backgroundColor: Color.alphaBlend(
         _cs.primary.withValues(alpha: 0.012),
         _cs.surface,
@@ -207,22 +180,22 @@ class _DashboardPageState extends State<DashboardPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
-              color: data.gradient[0].withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
+              color: data.color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(data.icon, size: 15, color: data.gradient[0]),
+            child: Icon(data.icon, size: 13, color: data.color),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               data.value,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: _cs.onSurface,
                 letterSpacing: -0.5,
@@ -233,7 +206,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 2),
           Text(
             data.label,
-            style: TextStyle(fontSize: 11, color: _cs.onSurfaceVariant),
+            style: TextStyle(fontSize: 9.5, color: _cs.onSurfaceVariant),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -252,7 +225,7 @@ class _DashboardPageState extends State<DashboardPage> {
           return Column(
             children: [
               _buildPeriodCard(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _buildActivityCard(),
             ],
           );
@@ -262,7 +235,7 @@ class _DashboardPageState extends State<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(flex: 5, child: _buildPeriodCard()),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(flex: 4, child: _buildActivityCard()),
             ],
           ),
@@ -296,12 +269,6 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeading(
-            _l10n.home,
-            '按时间范围查看会话数、录音时长与字符量。',
-            Icons.date_range_rounded,
-          ),
-          const SizedBox(height: 16),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -339,7 +306,7 @@ class _DashboardPageState extends State<DashboardPage> {
               );
             }),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -370,11 +337,11 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Divider(color: _cs.outlineVariant.withValues(alpha: 0.5), height: 1),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 20,
+            spacing: 14,
             runSpacing: 8,
             children: [
               Row(
@@ -417,8 +384,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildVerticalDivider() {
     return Container(
       width: 1,
-      height: 36,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
       color: _cs.outlineVariant.withValues(alpha: 0.5),
     );
   }
@@ -431,26 +398,25 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _buildSectionHeading(
             _l10n.activity,
-            '最近活跃度、连续使用与高频时段概览。',
             Icons.local_fire_department_rounded,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildActivityRow(
             Icons.local_fire_department_rounded,
             Colors.orange,
             _l10n.currentStreak,
             _l10n.streakDays(_stats.currentStreak),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _buildActivityRow(
             Icons.access_time_rounded,
-            _cs.tertiary,
+            const Color(0xFF2563EB),
             _l10n.lastUsed,
             _stats.lastTranscriptionAt != null
                 ? _formatTimeAgo(_stats.lastTranscriptionAt!)
                 : '-',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _buildActivityRow(
             Icons.emoji_events_rounded,
             Colors.amber.shade700,
@@ -567,7 +533,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   children: [
                     _buildSectionHeading(
                       _l10n.usageTrend,
-                      '观察使用频率在不同时间粒度下的变化。',
                       Icons.insights_outlined,
                     ),
                     const SizedBox(height: 8),
@@ -582,7 +547,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   Expanded(
                     child: _buildSectionHeading(
                       _l10n.usageTrend,
-                      '观察使用频率在不同时间粒度下的变化。',
                       Icons.insights_outlined,
                     ),
                   ),
@@ -592,8 +556,8 @@ class _DashboardPageState extends State<DashboardPage> {
               );
             },
           ),
-          const SizedBox(height: 20),
-          SizedBox(height: 180, child: _buildBarChart()),
+          const SizedBox(height: 14),
+          SizedBox(height: 150, child: _buildBarChart()),
         ],
       ),
     );
@@ -715,29 +679,39 @@ class _DashboardPageState extends State<DashboardPage> {
     if (hasProvider && hasModel) {
       return _Card(
         cs: _cs,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildMiniPie(
-                  title: _l10n.providerDistribution,
-                  data: _stats.providerDistribution,
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeading(
+              '${_l10n.providerDistribution} / ${_l10n.modelDistribution}',
+              Icons.pie_chart_outline_rounded,
+            ),
+            const SizedBox(height: 10),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildMiniPie(
+                      title: _l10n.providerDistribution,
+                      data: _stats.providerDistribution,
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 14),
+                    color: _cs.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                  Expanded(
+                    child: _buildMiniPie(
+                      title: _l10n.modelDistribution,
+                      data: _stats.modelDistribution,
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                width: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                color: _cs.outlineVariant.withValues(alpha: 0.5),
-              ),
-              Expanded(
-                child: _buildMiniPie(
-                  title: _l10n.modelDistribution,
-                  data: _stats.modelDistribution,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -745,13 +719,23 @@ class _DashboardPageState extends State<DashboardPage> {
     // Only one
     return _Card(
       cs: _cs,
-      child: _buildMiniPie(
-        title: hasProvider
-            ? _l10n.providerDistribution
-            : _l10n.modelDistribution,
-        data: hasProvider
-            ? _stats.providerDistribution
-            : _stats.modelDistribution,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeading(
+            hasProvider ? _l10n.providerDistribution : _l10n.modelDistribution,
+            Icons.pie_chart_outline_rounded,
+          ),
+          const SizedBox(height: 10),
+          _buildMiniPie(
+            title: hasProvider
+                ? _l10n.providerDistribution
+                : _l10n.modelDistribution,
+            data: hasProvider
+                ? _stats.providerDistribution
+                : _stats.modelDistribution,
+          ),
+        ],
       ),
     );
   }
@@ -776,12 +760,12 @@ class _DashboardPageState extends State<DashboardPage> {
             color: _cs.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Row(
           children: [
             SizedBox(
-              width: 100,
-              height: 100,
+              width: 84,
+              height: 84,
               child: PieChart(
                 PieChartData(
                   sectionsSpace: 2,
@@ -792,7 +776,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     return PieChartSectionData(
                       value: e.value.toDouble(),
                       color: colors[i % colors.length],
-                      radius: 28,
+                      radius: 24,
                       title: pct >= 12 ? '${pct.toStringAsFixed(0)}%' : '',
                       titleStyle: const TextStyle(
                         fontSize: 10,
@@ -804,7 +788,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,56 +862,39 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeading(
-            _l10n.allTokenUsage,
-            '聚合展示增强、会议、纠错与回溯的 token 消耗。',
-            Icons.token_rounded,
-          ),
-          const SizedBox(height: 16),
-          // Summary row at top if both exist
-          if (showAll) ...[
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: _cs.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.token_rounded,
-                    size: 15,
-                    color: _cs.primary,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: _cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                Text(
-                  _l10n.allTokenUsage,
+                child: Icon(Icons.token_rounded, size: 15, color: _cs.primary),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  showAll
+                      ? '${_l10n.allTokenUsage} ${_formatNumber(_stats.allTotalTokens)}'
+                      : _l10n.allTokenUsage,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  _formatNumber(_stats.allTotalTokens),
-                  style: TextStyle(
-                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: _cs.onSurface,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
+              ),
+            ],
+          ),
+          if (showAll) ...[
+            const SizedBox(height: 10),
             Divider(
               color: _cs.outlineVariant.withValues(alpha: 0.5),
               height: 1,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
           ],
           // Token blocks
           if (hasEnhance)
@@ -937,7 +904,7 @@ class _DashboardPageState extends State<DashboardPage> {
               output: _stats.enhanceCompletionTokens,
               total: _stats.enhanceTotalTokens,
             ),
-          if (hasEnhance && hasMeeting) const SizedBox(height: 16),
+          if (hasEnhance && hasMeeting) const SizedBox(height: 12),
           if (hasMeeting)
             _buildTokenBlock(
               title: _l10n.meetingTokenUsage,
@@ -946,7 +913,7 @@ class _DashboardPageState extends State<DashboardPage> {
               total: _stats.meetingEnhanceTotalTokens,
             ),
           if ((hasEnhance || hasMeeting) && hasCorrection)
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           if (hasCorrection)
             _buildTokenBlock(
               title: _l10n.correctionTokenUsage,
@@ -954,7 +921,7 @@ class _DashboardPageState extends State<DashboardPage> {
               output: _stats.correctionCompletionTokens,
               total: _stats.correctionTotalTokens,
             ),
-          if (hasCorrection && hasRetro) const SizedBox(height: 16),
+          if (hasCorrection && hasRetro) const SizedBox(height: 12),
           if (hasRetro)
             _buildTokenBlock(
               title: _l10n.retroTokenUsage,
@@ -977,10 +944,9 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _buildSectionHeading(
             _l10n.correctionRecallEfficiency,
-            '衡量术语召回和 LLM 介入效率。',
             Icons.auto_fix_high_outlined,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 20,
             runSpacing: 10,
@@ -1039,7 +1005,6 @@ class _DashboardPageState extends State<DashboardPage> {
               Expanded(
                 child: _buildSectionHeading(
                   _l10n.correctionChangesTitle,
-                  '查看最近发生过的纠错前后变化。',
                   Icons.compare_arrows_rounded,
                 ),
               ),
@@ -1063,14 +1028,8 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          if (!_correctionLogsExpanded)
-            Text(
-              _l10n.correctionChangesCollapsedHint,
-              style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-            ),
           if (_correctionLogsExpanded) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (_correctionLogs.isEmpty)
               Text(
                 _l10n.correctionChangesEmpty,
@@ -1194,10 +1153,9 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _buildSectionHeading(
             _l10n.retroSectionTitle,
-            '追踪终态回溯修正的触发与文本变化率。',
             Icons.history_toggle_off_rounded,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 20,
             runSpacing: 10,
@@ -1246,7 +1204,6 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _buildSectionHeading(
             _l10n.glossarySectionTitle,
-            '查看术语注入、强提升和覆盖的使用情况。',
             Icons.menu_book_outlined,
           ),
           const SizedBox(height: 12),
@@ -1411,50 +1368,32 @@ class _DashboardPageState extends State<DashboardPage> {
     return DateFormat('yyyy/M/d').format(dt);
   }
 
-  Widget _buildSectionHeading(String title, String subtitle, IconData icon) {
+  Widget _buildSectionHeading(String title, IconData icon) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 34,
-          height: 34,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                _cs.primary.withValues(alpha: 0.16),
-                _cs.primary.withValues(alpha: 0.08),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _cs.primary.withValues(alpha: 0.12)),
+            color: _cs.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
           ),
-          child: Icon(icon, size: 16, color: _cs.primary),
+          child: Icon(icon, size: 15, color: _cs.primary),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _cs.onSurface,
-                ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _cs.onSurface,
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.45,
-                  color: _cs.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],
@@ -1470,12 +1409,12 @@ class _HeroData {
   final IconData icon;
   final String label;
   final String value;
-  final List<Color> gradient;
+  final Color color;
   const _HeroData({
     required this.icon,
     required this.label,
     required this.value,
-    required this.gradient,
+    required this.color,
   });
 }
 
@@ -1487,8 +1426,8 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModernSurfaceCard(
-      radius: 20,
-      padding: const EdgeInsets.all(20),
+      radius: 18,
+      padding: const EdgeInsets.all(16),
       backgroundColor: cs.surface.withValues(alpha: 0.96),
       child: child,
     );
@@ -1518,7 +1457,7 @@ class _PeriodStat extends StatelessWidget {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
               letterSpacing: -0.3,

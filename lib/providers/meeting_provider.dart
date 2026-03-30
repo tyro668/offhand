@@ -907,10 +907,18 @@ class MeetingProvider extends ChangeNotifier {
           : fullRawText;
 
       if (summaryInput.isEmpty) {
-        // 尚无可整理内容时，保持 finalizing，等待后续分段处理完成后再次触发整理。
-        await LogService.error(
+        // 短录音或空转写时不会再有后续触发，这里必须主动收尾，
+        // 否则会议会永久停留在 finalizing 状态。
+        if (fullRawText.isNotEmpty) {
+          meeting.fullTranscription = fullRawText;
+        } else if (cachedFullText.trim().isNotEmpty) {
+          meeting.fullTranscription = cachedFullText.trim();
+        }
+
+        await _completeMeetingFinalization(meeting);
+        await LogService.info(
           'MEETING',
-          'finalization deferred: empty summary input for $meetingId',
+          'background finalization completed without summary input for $meetingId',
         );
         return;
       }
@@ -956,11 +964,7 @@ class MeetingProvider extends ChangeNotifier {
         meeting.title = title;
       }
 
-      // 后台整理完成后切回“已完成”
-      meeting.status = MeetingStatus.completed;
-      meeting.updatedAt = DateTime.now();
-      await AppDatabase.instance.updateMeeting(meeting);
-      await _loadMeetings();
+      await _completeMeetingFinalization(meeting);
 
       await LogService.info(
         'MEETING',
@@ -973,6 +977,13 @@ class MeetingProvider extends ChangeNotifier {
       _finalizingMeetingId = null;
       notifyListeners();
     }
+  }
+
+  Future<void> _completeMeetingFinalization(MeetingRecord meeting) async {
+    meeting.status = MeetingStatus.completed;
+    meeting.updatedAt = DateTime.now();
+    await AppDatabase.instance.updateMeeting(meeting);
+    await _loadMeetings();
   }
 
   Future<List<MeetingSegment>> _collectSegmentsForFinalization(
