@@ -174,7 +174,7 @@
   "searchHistory": "搜索转写档案...",
 
   "aboutSection": "关于",
-  "appDescription": "释手是一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，让所想即所写。",
+  "appDescription": "释手是一款语音输入工具，支持多种云端大模型和基于 sherpa-onnx 的本地 ASR 模型，让所想即所写。",
   "appSlogan": "言之所至，释手而书。",
   "version": "版本",
   "checkForUpdates": "检查更新",
@@ -705,7 +705,7 @@
 
   "vendorLocalModel": "本地模型",
   "vendorCustom": "自定义",
-  "localModelSttHint": "本地模型通过 FFI 直接调用 whisper.cpp，只需下载模型文件即可使用",
+  "localModelSttHint": "本地模型通过 sherpa-onnx 在本机运行，只需下载 ONNX 模型文件即可使用",
   "localSttTinyDesc": "Tiny (~75MB) - 速度最快，适合日常使用",
   "localSttBaseDesc": "Base (~142MB) - 平衡速度与准确率",
   "localSttSmallDesc": "Small (~466MB) - 更高准确率",

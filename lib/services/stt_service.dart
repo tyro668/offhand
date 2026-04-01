@@ -5,7 +5,6 @@ import 'stt_providers/openai_stt_provider.dart';
 import 'stt_providers/zai_stt_provider.dart';
 import 'stt_providers/aliyun_stt_provider.dart';
 import 'stt_providers/gemini_stt_provider.dart';
-import 'stt_providers/whisper_cpp_stt_provider.dart';
 import 'stt_providers/sense_voice_stt_provider.dart';
 
 // Re-export types for backward compatibility
@@ -25,12 +24,7 @@ class SttService {
 
   /// 根据 config 路由到对应的 SttProvider 实现。
   SttProvider _resolveProvider() {
-    // 本地 whisper.cpp
-    if (config.type == SttProviderType.whisperCpp) {
-      return WhisperCppSttProvider(config);
-    }
-
-    // 本地 SenseVoice FFI
+    // 本地 sherpa-onnx / SenseVoice FFI
     if (config.type == SttProviderType.senseVoice) {
       return SenseVoiceSttProvider(config);
     }
@@ -59,10 +53,7 @@ class SttService {
   }
 
   /// 将音频文件转写为文本。
-  Future<String> transcribe(
-    String audioPath, {
-    SttRequestContext? context,
-  }) {
+  Future<String> transcribe(String audioPath, {SttRequestContext? context}) {
     return _resolveProvider().transcribe(audioPath, context: context);
   }
 

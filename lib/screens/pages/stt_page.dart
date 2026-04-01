@@ -9,7 +9,6 @@ import '../../models/stt_model_entry.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/sense_voice_ffi_service.dart';
 import '../../services/stt_service.dart';
-import '../../services/whisper_cpp_service.dart';
 import '../../widgets/model_form_widgets.dart';
 import '../../widgets/modern_ui.dart';
 
@@ -29,10 +28,6 @@ class _SttPageState extends State<SttPage> {
         entry.vendorName == 'SenseVoice' ||
         entry.vendorName == 'sensevoice' ||
         entry.vendorName == '本地 SenseVoice';
-  }
-
-  static bool isSenseVoiceModelEntry(SttModelEntry entry) {
-    return SttProviderConfig.isSenseVoiceModel(entry.model);
   }
 
   @override
@@ -132,10 +127,8 @@ class _SttPageState extends State<SttPage> {
     );
 
     final config = SttProviderConfig(
-      type: isSenseVoiceModelEntry(entry)
+      type: isLocalModelEntry(entry)
           ? SttProviderType.senseVoice
-          : isLocalModelEntry(entry)
-          ? SttProviderType.whisperCpp
           : SttProviderType.cloud,
       name: entry.vendorName,
       baseUrl: entry.baseUrl,
@@ -252,20 +245,6 @@ class _AddModelDialog extends StatefulWidget {
 class _AddModelDialogState extends State<_AddModelDialog> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
 
-  String _localizedSttLocalDescription(WhisperModel model) {
-    final l10n = widget.l10n;
-    switch (model.fileName) {
-      case 'ggml-tiny.bin':
-        return l10n.localSttTinyDesc;
-      case 'ggml-base.bin':
-        return l10n.localSttBaseDesc;
-      case 'ggml-small.bin':
-        return l10n.localSttSmallDesc;
-      default:
-        return model.description;
-    }
-  }
-
   String _localizedSenseVoiceLocalDescription(SenseVoiceModel model) {
     return model.description;
   }
@@ -288,7 +267,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     final local = <SttProviderConfig>[];
     final others = <SttProviderConfig>[];
     for (final preset in widget.presets) {
-      if (preset.type == SttProviderType.whisperCpp) {
+      if (preset.type == SttProviderType.senseVoice) {
         local.add(preset);
       } else {
         others.add(preset);
@@ -297,7 +276,7 @@ class _AddModelDialogState extends State<_AddModelDialog> {
     return [...local, ...others];
   }
 
-  bool get _isLocalModel => _selectedVendor?.type == SttProviderType.whisperCpp;
+  bool get _isLocalModel => _selectedVendor?.type == SttProviderType.senseVoice;
 
   @override
   void dispose() {
@@ -372,13 +351,10 @@ class _AddModelDialogState extends State<_AddModelDialog> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              _buildSectionLabel('SenseVoice'),
+              _buildSectionLabel('Sherpa-ONNX'),
               ...kSenseVoiceModels.map(
                 (m) => _buildSenseVoiceModelDownloadTile(m),
               ),
-              const SizedBox(height: 12),
-              _buildSectionLabel('Whisper'),
-              ...kWhisperModels.map((m) => _buildModelDownloadTile(m)),
               const SizedBox(height: 12),
             ],
           ),
@@ -399,230 +375,6 @@ class _AddModelDialogState extends State<_AddModelDialog> {
         ),
       ),
     );
-  }
-
-  Widget _buildModelDownloadTile(WhisperModel model) {
-    final isSelected = _selectedModel?.id == model.fileName;
-    final downloaded = _modelDownloaded[model.fileName];
-    final isDownloading = _downloading && isSelected;
-
-    return FutureBuilder<bool>(
-      future: downloaded != null
-          ? Future.value(downloaded)
-          : WhisperCppService.isModelDownloaded(model.fileName),
-      builder: (context, snapshot) {
-        final exists = snapshot.data ?? downloaded ?? false;
-        if (snapshot.hasData && _modelDownloaded[model.fileName] == null) {
-          // 缓存结果避免重复检查
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() => _modelDownloaded[model.fileName] = exists);
-            }
-          });
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? _cs.primary : _cs.outlineVariant,
-              width: isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: exists
-                ? () => setState(() {
-                    _selectedModel = SttModel(
-                      id: model.fileName,
-                      description: _localizedSttLocalDescription(model),
-                    );
-                  })
-                : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  // 选中指示器
-                  Icon(
-                    isSelected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    size: 18,
-                    color: isSelected
-                        ? _cs.primary
-                        : exists
-                        ? _cs.outline
-                        : _cs.outline.withValues(alpha: 0.4),
-                  ),
-                  const SizedBox(width: 10),
-                  // 模型信息
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          model.fileName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _cs.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _localizedSttLocalDescription(model),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _cs.onSurfaceVariant,
-                          ),
-                        ),
-                        if (isDownloading) ...[
-                          const SizedBox(height: 6),
-                          if (_downloadStatus.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                _downloadStatus,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: _cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: _downloadProgress,
-                              minHeight: 4,
-                              backgroundColor: _cs.surfaceContainerHighest,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: _cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                        if (_downloadError != null && isSelected) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            _downloadError!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.redAccent,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // 下载/已下载状态
-                  if (exists)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            size: 14,
-                            color: Colors.green,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            widget.l10n.downloaded,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (isDownloading)
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: _cs.primary,
-                      ),
-                    )
-                  else
-                    TextButton.icon(
-                      onPressed: () => _downloadModel(model),
-                      icon: const Icon(Icons.download, size: 16),
-                      label: Text(
-                        widget.l10n.download,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _downloadModel(WhisperModel model) async {
-    setState(() {
-      _downloading = true;
-      _downloadProgress = 0.0;
-      _downloadError = null;
-      _downloadStatus = '';
-      _selectedModel = SttModel(
-        id: model.fileName,
-        description: _localizedSttLocalDescription(model),
-      );
-    });
-
-    try {
-      await WhisperCppService.downloadModel(
-        model,
-        onProgress: (progress) {
-          if (mounted) {
-            setState(() => _downloadProgress = progress);
-          }
-        },
-        onStatus: (message) {
-          if (mounted) {
-            setState(() => _downloadStatus = message);
-          }
-        },
-      );
-      if (mounted) {
-        setState(() {
-          _downloading = false;
-          _modelDownloaded[model.fileName] = true;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _downloading = false;
-          _downloadError = e.toString();
-        });
-      }
-    }
   }
 
   Widget _buildSenseVoiceModelDownloadTile(SenseVoiceModel model) {
@@ -1065,7 +817,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
                       controller: _modelController,
                       hintText: _isSenseVoiceModel
                           ? 'sense-voice-zh-en'
-                          : 'ggml-tiny.bin',
+                          : 'sense-voice-zh-en',
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -1121,9 +873,7 @@ class _EditModelDialogState extends State<_EditModelDialog> {
 
   Future<void> _openModelFileLocation(String fileName) async {
     if (fileName.isEmpty) return;
-    final dir = _isSenseVoiceModel
-        ? await SenseVoiceFfiService.defaultModelDir
-        : await WhisperCppService.defaultModelDir;
+    final dir = await SenseVoiceFfiService.defaultModelDir;
     if (Platform.isWindows) {
       await Process.run('explorer', [dir]);
     } else {

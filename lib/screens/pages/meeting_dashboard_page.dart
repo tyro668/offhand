@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/meeting.dart';
 import '../../providers/meeting_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/log_service.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import '../../widgets/meeting_markdown_view.dart';
 import '../../widgets/modern_ui.dart';
@@ -19,7 +20,9 @@ import 'meeting_recording_page.dart';
 /// 左侧: 今日会议卡片轮播 + 最近会议列表
 /// 右侧: 实时会议面板 (含波形/转写/控制按钮)
 class MeetingDashboardPage extends StatefulWidget {
-  const MeetingDashboardPage({super.key});
+  final VoidCallback? onStopReturnHome;
+
+  const MeetingDashboardPage({super.key, this.onStopReturnHome});
 
   @override
   State<MeetingDashboardPage> createState() => _MeetingDashboardPageState();
@@ -1182,6 +1185,7 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
             aiConfig: settings.effectiveAiEnhanceConfig,
             aiEnhanceEnabled: settings.aiEnhanceEnabled,
             dictionarySuffix: settings.dictionaryWordsForPrompt,
+            onStopReturnHome: widget.onStopReturnHome,
           ),
         ),
       ),
@@ -1204,27 +1208,30 @@ class _MeetingDashboardPageState extends State<MeetingDashboardPage>
       );
     }
 
-    try {
-      await provider.stopMeetingFast();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.meetingMovedToFinalizing(l10n.meetingFinalizing)),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.meetingStopFailed(e.toString())),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isStoppingMeeting = false);
-    }
+    final stopFuture = provider.stopMeetingFast();
+    unawaited(() async {
+      try {
+        await stopFuture;
+      } catch (e, st) {
+        await LogService.error(
+          'MEETING_DASHBOARD_PAGE',
+          'stop meeting failed from dashboard: $e\n$st',
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _isStoppingMeeting = false);
+        }
+      }
+    }());
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.meetingMovedToFinalizing(l10n.meetingFinalizing)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _showMoveGroupSheet(

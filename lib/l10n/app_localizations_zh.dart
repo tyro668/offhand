@@ -463,7 +463,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutSection => '关于';
 
   @override
-  String get appDescription => '释手是一款语音输入工具，支持多种云端大模型和本地 Whisper 模型，让所想即所写。';
+  String get appDescription =>
+      '释手是一款语音输入工具，支持多种云端大模型和基于 sherpa-onnx 的本地 ASR 模型，让所想即所写。';
 
   @override
   String get appSlogan => '言之所至，释手而书。';
@@ -1530,7 +1531,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vendorCustom => '自定义';
 
   @override
-  String get localModelSttHint => '本地模型通过 FFI 直接调用 whisper.cpp，只需下载模型文件即可使用';
+  String get localModelSttHint => '本地模型通过 sherpa-onnx 在本机运行，只需下载 ONNX 模型文件即可使用';
 
   @override
   String get localSttTinyDesc => 'Tiny (~75MB) - 速度最快，适合日常使用';

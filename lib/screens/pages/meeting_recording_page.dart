@@ -9,6 +9,7 @@ import '../../models/ai_enhance_config.dart';
 import '../../providers/meeting_provider.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/log_service.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import '../../widgets/meeting_markdown_view.dart';
 
@@ -21,6 +22,7 @@ class MeetingRecordingPage extends StatefulWidget {
   final AiEnhanceConfig? aiConfig;
   final bool aiEnhanceEnabled;
   final String dictionarySuffix;
+  final VoidCallback? onStopReturnHome;
 
   const MeetingRecordingPage({
     super.key,
@@ -28,6 +30,7 @@ class MeetingRecordingPage extends StatefulWidget {
     this.aiConfig,
     this.aiEnhanceEnabled = false,
     this.dictionarySuffix = '',
+    this.onStopReturnHome,
   });
 
   @override
@@ -215,31 +218,30 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
       );
     }
 
-    try {
-      // 使用快速停止，立即返回
-      await provider.stopMeetingFast();
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.meetingMovedToFinalizing(l10n.meetingFinalizing)),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      // 停止后自动返回会议列表，等待后台整理完成。
-      Navigator.of(context).pop();
-    } catch (e) {
-      if (!mounted) return;
-      final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.meetingStopFailed(e.toString())),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      setState(() => _isStoppingMeeting = false);
-    }
+    final stopFuture = provider.stopMeetingFast();
+    unawaited(() async {
+      try {
+        await stopFuture;
+      } catch (e, st) {
+        await LogService.error(
+          'MEETING_RECORDING_PAGE',
+          'stop meeting failed after leaving page: $e\n$st',
+        );
+      }
+    }());
+
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.meetingMovedToFinalizing(l10n.meetingFinalizing)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // 发起停止后立即返回会议列表，剩余停止与整理流程在后台继续。
+    Navigator.of(context).pop();
+    widget.onStopReturnHome?.call();
   }
 
   Future<void> _addToDictionary(String selectedWord) async {
@@ -282,13 +284,12 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
     final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<MeetingProvider>();
     final isStoppingUi = _isStoppingMeeting || provider.isStoppingMeeting;
+    final shouldBlockBack = provider.isRecording && isStoppingUi;
 
     if (provider.isRecording) {
       _hasEverObservedRecording = true;
       _handledExternalStop = false;
-    } else if (_hasEverObservedRecording &&
-        !isStoppingUi &&
-        !_handledExternalStop) {
+    } else if (_hasEverObservedRecording && !_handledExternalStop) {
       _handledExternalStop = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handleExternalStop();
@@ -320,9 +321,9 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
     }
 
     return PopScope(
-      canPop: !isStoppingUi,
+      canPop: !shouldBlockBack,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && isStoppingUi && mounted) {
+        if (!didPop && shouldBlockBack && mounted) {
           final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -350,7 +351,9 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: isStoppingUi ? null : () => _handleBack(provider, l10n),
+            onPressed: shouldBlockBack
+                ? null
+                : () => _handleBack(provider, l10n),
           ),
           title: SizedBox(
             width: 300,
@@ -448,18 +451,30 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
               IconButton(
                 onPressed: isStoppingUi ? null : () => _confirmEndMeeting(),
                 icon: isStoppingUi
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+                    ? Stack(
+                        alignment: Alignment.center,
+                        children: const [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Icon(
+                            Icons.hourglass_top_rounded,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                        ],
                       )
                     : const Icon(Icons.stop_rounded, size: 20),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFFC62828),
+                  disabledForegroundColor: Colors.white,
                   minimumSize: const Size(38, 38),
                   padding: const EdgeInsets.all(6),
                 ),
@@ -896,7 +911,8 @@ class _MeetingRecordingPageState extends State<MeetingRecordingPage>
   }
 
   void _handleBack(MeetingProvider provider, AppLocalizations l10n) {
-    if (_isStoppingMeeting || provider.isStoppingMeeting) {
+    if (provider.isRecording &&
+        (_isStoppingMeeting || provider.isStoppingMeeting)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.meetingStoppingPleaseWait),

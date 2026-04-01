@@ -1,4 +1,4 @@
-enum SttProviderType { cloud, whisperCpp, senseVoice }
+enum SttProviderType { cloud, senseVoice }
 
 /// 激活模式
 enum ActivationMode { tapToTalk, pushToTalk }
@@ -50,8 +50,6 @@ class SttProviderConfig {
       switch (rawType) {
         case 1:
         case 2:
-          type = SttProviderType.whisperCpp;
-          break;
         case 3:
           type = SttProviderType.senseVoice;
           break;
@@ -158,18 +156,16 @@ class SttProviderConfig {
       ],
     ),
     SttProviderConfig(
-      type: SttProviderType.whisperCpp,
+      type: SttProviderType.senseVoice,
       name: 'Local Model',
       baseUrl: '',
       apiKey: '',
-      model: 'ggml-tiny.bin',
+      model: 'sense-voice-zh-en',
       availableModels: [
         SttModel(
-          id: 'ggml-tiny.bin',
-          description: 'Tiny (~75MB) - 速度最快，适合日常使用',
+          id: 'sense-voice-zh-en',
+          description: 'SenseVoice 多语种 INT8 (~250MB) - 中/英/日/韩/粤',
         ),
-        SttModel(id: 'ggml-base.bin', description: 'Base (~142MB) - 平衡速度与准确率'),
-        SttModel(id: 'ggml-small.bin', description: 'Small (~466MB) - 更高准确率'),
       ],
     ),
   ];
@@ -198,10 +194,9 @@ class SttProviderConfig {
         )
         .where(
           (preset) =>
-              preset.type != SttProviderType.senseVoice &&
               preset.name.isNotEmpty &&
               (preset.baseUrl.isNotEmpty ||
-                  preset.type == SttProviderType.whisperCpp) &&
+                  preset.type == SttProviderType.senseVoice) &&
               preset.model.isNotEmpty,
         )
         .toList();
@@ -210,8 +205,8 @@ class SttProviderConfig {
   static SttProviderType _parseProviderType(String? value) {
     switch (value) {
       case 'whisperCpp':
-        return SttProviderType.whisperCpp;
       case 'senseVoice':
+      case 'localOnnx':
         return SttProviderType.senseVoice;
       case 'whisper': // 兼容旧数据，降级为 cloud
       case 'cloud':

@@ -47,8 +47,8 @@ void main() {
       expect(presets, isNotEmpty);
       for (final preset in presets) {
         expect(preset.name, isNotEmpty);
-        // whisperCpp 类型的 baseUrl 可以为空（可执行文件路径可选）
-        if (preset.type != SttProviderType.whisperCpp) {
+        // 本地 sherpa-onnx 类型的 baseUrl 可以为空。
+        if (preset.type != SttProviderType.senseVoice) {
           expect(preset.baseUrl, isNotEmpty);
         }
         expect(preset.model, isNotEmpty);

@@ -179,7 +179,7 @@
   "searchHistory": "Search transcription archives...",
 
   "aboutSection": "About",
-  "appDescription": "Offhand is a voice input tool that supports multiple cloud LLMs and local Whisper models, turning speech into text instantly.",
+  "appDescription": "Offhand is a voice input tool that supports multiple cloud LLMs and local ASR models powered by sherpa-onnx, turning speech into text instantly.",
   "appSlogan": "Speak freely, write unbound.",
   "version": "Version",
   "checkForUpdates": "Check for Updates",
@@ -710,7 +710,7 @@
 
   "vendorLocalModel": "Local Model",
   "vendorCustom": "Custom",
-  "localModelSttHint": "Local model calls whisper.cpp directly via FFI, just download the model file to use.",
+  "localModelSttHint": "Local models run on-device via sherpa-onnx; just download the ONNX model files to use them.",
   "localSttTinyDesc": "Tiny (~75MB) - Fastest, suitable for daily use",
   "localSttBaseDesc": "Base (~142MB) - Balanced speed and accuracy",
   "localSttSmallDesc": "Small (~466MB) - Higher accuracy",

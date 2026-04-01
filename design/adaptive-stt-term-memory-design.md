@@ -91,7 +91,7 @@
 2. 缺少 STT 前提示注入
    - OpenAI STT 当前没有传 `prompt`
    - Gemini 虽然走 chat completions，但提示词是写死的
-   - whisper.cpp 当前也没有传 initial prompt
+   - 本地 sherpa-onnx / SenseVoice 链路当前没有消费动态术语提示
 
 3. 缺少“自动升级”的证据模型
    - 用户一次历史编辑只能得到待确认候选
@@ -253,19 +253,20 @@ class SttRequestContext {
 - 现有固定文案：`请将这段音频准确转写为纯文本，仅返回转写结果。`
 - 改为：基础指令 + 术语提示
 
-#### whisper.cpp
+#### 本地 sherpa-onnx / SenseVoice
 
-当前 [`/Users/richie/Documents/work/offhand/lib/services/whisper_cpp_service.dart`](/Users/richie/Documents/work/offhand/lib/services/whisper_cpp_service.dart) 已构造 `TranscribeRequest`，但未传 initial prompt。
+当前 [`/Users/richie/Documents/work/offhand/lib/services/sense_voice_ffi_service.dart`](/Users/richie/Documents/work/offhand/lib/services/sense_voice_ffi_service.dart) 已统一承接本地 ASR，但接口层还没有把动态术语提示真正传入识别配置。
 
-建议确认 `whisper_flutter_new` 是否支持：
+建议后续确认 sherpa-onnx 对以下能力的支持边界：
 
-- `prompt`
-- `initialPrompt`
+- 动态 prompt
+- preferred terms / hotwords
+- 自定义 bias 词表
 
-若支持，直接注入术语提示。
-若不支持，则至少保留 STT 后纠错，不强行 fork 插件。
+若底层支持，直接在本地 provider 中注入术语提示。
+若底层暂不支持，则继续保留 STT 后纠错作为本地模型兜底。
 
-#### SenseVoice / 其他 provider
+#### 其他 provider
 
 统一通过能力位声明：
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
@@ -42,6 +43,7 @@ class DictionaryCsvImportResult {
 }
 
 class SettingsProvider extends ChangeNotifier {
+  static const _defaultLocalAsrModelId = 'sense-voice-zh-en';
   static const _correctionMaxReferenceEntries = 15;
   static const _correctionMinCandidateScore = 0.30;
   static const _correctionEnableSingleCharFuzzy = false;
@@ -329,6 +331,7 @@ class SettingsProvider extends ChangeNotifier {
     if (configJson != null) {
       final decoded = json.decode(configJson) as Map<String, dynamic>;
       _config = SttProviderConfig.fromJson(_cleanApiKeyInJson(decoded));
+      _config = _normalizeSttConfig(_config);
     }
 
     // 加载自定义服务商
@@ -463,8 +466,13 @@ class SettingsProvider extends ChangeNotifier {
         final list = json.decode(sttEntriesJson) as List<dynamic>;
         _sttModelEntries = list
             .whereType<Map<String, dynamic>>()
-            .map((e) => SttModelEntry.fromJson(_cleanApiKeyInJson(e)))
+            .map(
+              (e) => _normalizeSttModelEntry(
+                SttModelEntry.fromJson(_cleanApiKeyInJson(e)),
+              ),
+            )
             .toList();
+        await _saveSttModelEntries();
       } catch (_) {}
     }
     // 如果有激活的语音模型条目，同步到 config
@@ -1072,31 +1080,81 @@ class SettingsProvider extends ChangeNotifier {
   void _syncSttConfigFromActiveEntry() {
     final active = activeSttModelEntry;
     if (active != null) {
+      final normalized = _normalizeSttModelEntry(active);
+      if (normalized.vendorName != active.vendorName ||
+          normalized.baseUrl != active.baseUrl ||
+          normalized.model != active.model ||
+          normalized.apiKey != active.apiKey) {
+        _sttModelEntries = _sttModelEntries.map((e) {
+          return e.id == active.id
+              ? normalized.copyWith(enabled: e.enabled)
+              : e;
+        }).toList();
+        unawaited(_saveSttModelEntries());
+      }
+
       // 根据 vendorName + 模型文件名判断 provider type
       SttProviderType type;
-      if (active.vendorName == 'Local Model' ||
-          active.vendorName == '本地模型' ||
-          active.vendorName == '本地 whisper.cpp' ||
-          active.vendorName == 'whisper.cpp' ||
-          active.vendorName == 'SenseVoice' ||
-          active.vendorName == 'sensevoice' ||
-          active.vendorName == '本地 SenseVoice') {
-        // 通过模型文件名区分 SenseVoice 和 Whisper
-        type = SttProviderConfig.isSenseVoiceModel(active.model)
-            ? SttProviderType.senseVoice
-            : SttProviderType.whisperCpp;
+      if (_isLocalSttVendorName(normalized.vendorName)) {
+        type = SttProviderType.senseVoice;
       } else {
         type = SttProviderType.cloud;
       }
-      _config = _config.copyWith(
-        type: type,
-        name: active.vendorName,
-        baseUrl: active.baseUrl,
-        apiKey: active.apiKey,
-        model: active.model,
+      _config = _normalizeSttConfig(
+        _config.copyWith(
+          type: type,
+          name: normalized.vendorName,
+          baseUrl: normalized.baseUrl,
+          apiKey: normalized.apiKey,
+          model: normalized.model,
+        ),
       );
       _saveSetting(_configKey, json.encode(_config.toJson()));
     }
+  }
+
+  bool _isLocalSttVendorName(String vendorName) {
+    return vendorName == 'Local Model' ||
+        vendorName == '本地模型' ||
+        vendorName == '本地 whisper.cpp' ||
+        vendorName == 'whisper.cpp' ||
+        vendorName == 'SenseVoice' ||
+        vendorName == 'sensevoice' ||
+        vendorName == '本地 SenseVoice';
+  }
+
+  SttProviderConfig _normalizeSttConfig(SttProviderConfig config) {
+    if (config.type != SttProviderType.senseVoice &&
+        !_isLocalSttVendorName(config.name)) {
+      return config;
+    }
+
+    final model = SttProviderConfig.isSenseVoiceModel(config.model)
+        ? config.model
+        : _defaultLocalAsrModelId;
+    return config.copyWith(
+      type: SttProviderType.senseVoice,
+      name: 'Local Model',
+      baseUrl: '',
+      apiKey: '',
+      model: model,
+    );
+  }
+
+  SttModelEntry _normalizeSttModelEntry(SttModelEntry entry) {
+    if (!_isLocalSttVendorName(entry.vendorName)) {
+      return entry;
+    }
+
+    final model = SttProviderConfig.isSenseVoiceModel(entry.model)
+        ? entry.model
+        : _defaultLocalAsrModelId;
+    return entry.copyWith(
+      vendorName: 'Local Model',
+      baseUrl: '',
+      apiKey: '',
+      model: model,
+    );
   }
 
   Future<void> addCustomProvider(SttProviderConfig provider) async {

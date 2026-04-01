@@ -8,7 +8,6 @@ String localizedVendorName(String vendorName, AppLocalizations l10n) {
     case '本地模型':
     case '本地 whisper.cpp':
     case 'whisper.cpp':
-      return l10n.vendorLocalModel;
     case 'SenseVoice':
     case 'sensevoice':
     case '本地 SenseVoice':

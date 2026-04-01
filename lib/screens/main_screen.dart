@@ -269,10 +269,9 @@ class _MainScreenState extends State<MainScreen> {
   bool _hasValidSttModel(SettingsProvider settings) {
     final model = settings.config.model.trim();
     if (model.isEmpty) return false;
-    // 本地模型（SenseVoice / whisperCpp）只需检查 model 非空即可；
+    // 本地 sherpa-onnx 模型只需检查 model 非空即可；
     // 它们的模型文件名不在云端 preset 的 availableModels 列表中。
-    if (settings.config.type == SttProviderType.senseVoice ||
-        settings.config.type == SttProviderType.whisperCpp) {
+    if (settings.config.type == SttProviderType.senseVoice) {
       return true;
     }
     final preset = settings.currentPreset;
@@ -954,7 +953,14 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
       ),
-      3 => const MeetingDashboardPage(),
+      3 => MeetingDashboardPage(
+        onStopReturnHome: () {
+          if (!mounted) return;
+          setState(() {
+            _selectedNav = 0;
+          });
+        },
+      ),
       _ => const SizedBox(),
     };
 
@@ -1135,6 +1141,12 @@ class _MainScreenState extends State<MainScreen> {
                   aiConfig: settings.effectiveAiEnhanceConfig,
                   aiEnhanceEnabled: settings.aiEnhanceEnabled,
                   dictionarySuffix: settings.dictionaryWordsForPrompt,
+                  onStopReturnHome: () {
+                    if (!mounted) return;
+                    setState(() {
+                      _selectedNav = 0;
+                    });
+                  },
                 ),
               ),
             ),

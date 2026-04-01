@@ -483,7 +483,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appDescription =>
-      'Offhand is a voice input tool that supports multiple cloud LLMs and local Whisper models, turning speech into text instantly.';
+      'Offhand is a voice input tool that supports multiple cloud LLMs and local ASR models powered by sherpa-onnx, turning speech into text instantly.';
 
   @override
   String get appSlogan => 'Speak freely, write unbound.';
@@ -1591,7 +1591,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localModelSttHint =>
-      'Local model calls whisper.cpp directly via FFI, just download the model file to use.';
+      'Local models run on-device via sherpa-onnx; just download the ONNX model files to use them.';
 
   @override
   String get localSttTinyDesc =>

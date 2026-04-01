@@ -11,8 +11,6 @@ PODS:
     - FlutterMacOS
   - url_launcher_macos (0.0.1):
     - FlutterMacOS
-  - whisper_flutter_new (0.0.1):
-    - FlutterMacOS
 
 DEPENDENCIES:
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
@@ -21,7 +19,6 @@ DEPENDENCIES:
   - sherpa_onnx_macos (from `Flutter/ephemeral/.symlinks/plugins/sherpa_onnx_macos/macos`)
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
   - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
-  - whisper_flutter_new (from `Flutter/ephemeral/.symlinks/plugins/whisper_flutter_new/macos`)
 
 EXTERNAL SOURCES:
   file_picker:
@@ -36,8 +33,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin
   url_launcher_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
-  whisper_flutter_new:
-    :path: Flutter/ephemeral/.symlinks/plugins/whisper_flutter_new/macos
 
 SPEC CHECKSUMS:
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
@@ -46,7 +41,6 @@ SPEC CHECKSUMS:
   sherpa_onnx_macos: 3d37f232617f0d1d1e7e62f62fd7ec0661be7546
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
-  whisper_flutter_new: d73daf7f6977167139555f841bd5b6bfbf4f9e3b
 
 PODFILE CHECKSUM: ba845a7a65fdaff090a632b1b7063d1db34b29e3
 

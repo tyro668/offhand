@@ -72,22 +72,14 @@
       ]
     },
     {
-      "type": "whisperCpp",
+      "type": "senseVoice",
       "name": "Local Model",
       "baseUrl": "",
-      "defaultModel": "ggml-tiny.bin",
+      "defaultModel": "sense-voice-zh-en",
       "models": [
         {
-          "id": "ggml-tiny.bin",
-          "description": "Tiny (~75MB) - 速度最快，适合日常使用"
-        },
-        {
-          "id": "ggml-base.bin",
-          "description": "Base (~142MB) - 平衡速度与准确率"
-        },
-        {
-          "id": "ggml-small.bin",
-          "description": "Small (~466MB) - 更高准确率"
+          "id": "sense-voice-zh-en",
+          "description": "SenseVoice 多语种 INT8 (~250MB) - 中/英/日/韩/粤"
         }
       ]
     }
