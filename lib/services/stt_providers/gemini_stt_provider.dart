@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../../models/stt_request_context.dart';
 import '../log_service.dart';
+import '../model_request_options.dart';
 import '../network_client_service.dart';
 import 'stt_provider.dart';
 
@@ -81,7 +82,7 @@ class GeminiSttProvider extends SttProvider {
     final client = NetworkClientService.createClient();
     try {
       Future<String> sendWithModel(String currentModel) async {
-        final currentBody = json.encode({
+        final payload = <String, dynamic>{
           'model': currentModel,
           'messages': [
             {
@@ -97,7 +98,9 @@ class GeminiSttProvider extends SttProvider {
           ],
           'stream': false,
           'temperature': 0,
-        });
+        };
+        payload.addAll(buildDefaultThinkingOptions(currentModel));
+        final currentBody = json.encode(payload);
 
         final response = await client
             .post(uri, headers: headers, body: currentBody)

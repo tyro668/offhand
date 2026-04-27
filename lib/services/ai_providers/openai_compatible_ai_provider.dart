@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import '../log_service.dart';
+import '../model_request_options.dart';
 import '../network_client_service.dart';
 import 'ai_provider.dart';
 
@@ -16,13 +17,6 @@ class OpenAiCompatibleAiProvider extends AiProvider {
   static const _defaultStreamTimeout = Duration(seconds: 60);
 
   OpenAiCompatibleAiProvider(super.config);
-
-  /// 检测模型是否可能默认启用了 thinking 能力（如 qwen3 / qwen3.5 系列），
-  /// 需要在请求中显式禁用以避免返回思考过程。
-  bool get _shouldDisableThinking {
-    final m = config.model.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
-    return RegExp(r'qwen3').hasMatch(m);
-  }
 
   /// `/chat/completions` 端点 URL。子类可 override。
   String get chatCompletionsUrl =>
@@ -57,9 +51,7 @@ class OpenAiCompatibleAiProvider extends AiProvider {
         {'role': 'user', 'content': buildEnhanceUserMessage(text)},
       ],
     };
-    if (_shouldDisableThinking) {
-      bodyMap['enable_thinking'] = false;
-    }
+    bodyMap.addAll(buildDefaultThinkingOptions(config.model));
     final body = json.encode(bodyMap);
 
     final uri = Uri.parse(chatCompletionsUrl);
@@ -163,9 +155,7 @@ class OpenAiCompatibleAiProvider extends AiProvider {
         {'role': 'user', 'content': buildEnhanceUserMessage(text)},
       ],
     };
-    if (_shouldDisableThinking) {
-      bodyMap['enable_thinking'] = false;
-    }
+    bodyMap.addAll(buildDefaultThinkingOptions(config.model));
 
     final httpClient = HttpClient();
     httpClient.connectionTimeout = const Duration(seconds: 10);

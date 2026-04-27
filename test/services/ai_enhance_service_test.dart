@@ -179,6 +179,45 @@ void main() {
         final systemMsg = messages[0] as Map<String, dynamic>;
         expect(systemMsg['content'], 'You are MyBot, a helpful assistant');
       });
+
+      test('sends default thinking control in chat completions body', () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        Map<String, dynamic>? payload;
+        server.listen((req) async {
+          if (req.uri.path.endsWith('/chat/completions')) {
+            final body = await utf8.decoder.bind(req).join();
+            payload = json.decode(body) as Map<String, dynamic>;
+            req.response.statusCode = 200;
+            req.response.headers.contentType = ContentType.json;
+            req.response.write(
+              json.encode({
+                'choices': [
+                  {
+                    'message': {'content': 'result'},
+                  },
+                ],
+              }),
+            );
+          }
+          await req.response.close();
+        });
+
+        final config = AiEnhanceConfig(
+          baseUrl: 'http://127.0.0.1:${server.port}/v1',
+          apiKey: 'test-key',
+          model: 'qwen3.5-plus',
+          prompt: 'Fix',
+          agentName: 'Agent',
+        );
+
+        await AiEnhanceService(config).enhance('hello');
+
+        expect(payload, isNotNull);
+        expect(payload!['thinking'], {'type': 'disabled'});
+        expect(payload!['enable_thinking'], isFalse);
+      });
     });
 
     group('checkAvailabilityDetailed', () {

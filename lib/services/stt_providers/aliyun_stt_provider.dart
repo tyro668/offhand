@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../../models/stt_request_context.dart';
 import '../log_service.dart';
+import '../model_request_options.dart';
 import '../network_client_service.dart';
 import 'stt_provider.dart';
 
@@ -67,7 +68,7 @@ class AliyunSttProvider extends SttProvider {
         : '请将这段音频准确转写为纯文本，仅返回转写结果。';
 
     final headers = buildHeaders();
-    final body = json.encode({
+    final payload = <String, dynamic>{
       'model': resolvedModel,
       'messages': [
         {
@@ -85,7 +86,9 @@ class AliyunSttProvider extends SttProvider {
       ],
       'stream': false,
       'asr_options': {'enable_itn': false},
-    });
+    };
+    payload.addAll(buildDefaultThinkingOptions(resolvedModel));
+    final body = json.encode(payload);
 
     final client = NetworkClientService.createClient();
     try {

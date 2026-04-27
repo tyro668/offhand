@@ -115,6 +115,14 @@
         {
           "id": "deepseek-chat",
           "description": "DeepSeek 默认模型"
+        },
+         {
+          "id": "deepseek-v4-flash",
+          "description": "DeepSeek Flash 模型"
+        },
+        {
+          "id": "deepseek-v4-pro",
+          "description": "DeepSeek Pro 模型"
         }
       ]
     },

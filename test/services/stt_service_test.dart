@@ -206,6 +206,8 @@ void main() {
           final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
           addTearDown(() => server.close(force: true));
 
+          Map<String, dynamic>? fallbackPayload;
+
           server.listen((req) async {
             final path = req.uri.path;
             if (path.endsWith('/audio/transcriptions')) {
@@ -216,6 +218,8 @@ void main() {
                 }),
               );
             } else if (path.endsWith('/chat/completions')) {
+              final body = await utf8.decoder.bind(req).join();
+              fallbackPayload = json.decode(body) as Map<String, dynamic>;
               req.response.statusCode = 200;
               req.response.write(
                 json.encode({
@@ -249,6 +253,9 @@ void main() {
 
           final result = await SttService(config).transcribe(tempFile.path);
           expect(result, 'Aliyun fallback text');
+          expect(fallbackPayload, isNotNull);
+          expect(fallbackPayload!['thinking'], {'type': 'disabled'});
+          expect(fallbackPayload!['enable_thinking'], isFalse);
         },
       );
 
@@ -303,11 +310,12 @@ void main() {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         addTearDown(() => server.close(force: true));
 
+        Map<String, dynamic>? capturedPayload;
         String capturedInstruction = '';
         server.listen((req) async {
           final body = await utf8.decoder.bind(req).join();
-          final payload = json.decode(body) as Map<String, dynamic>;
-          final messages = payload['messages'] as List<dynamic>;
+          capturedPayload = json.decode(body) as Map<String, dynamic>;
+          final messages = capturedPayload!['messages'] as List<dynamic>;
           final content =
               (messages.first as Map<String, dynamic>)['content'] as List<dynamic>;
           capturedInstruction =
@@ -348,6 +356,8 @@ void main() {
 
         expect(result, 'Gemini text');
         expect(capturedInstruction, contains('优先识别 帆软 和 FineBI'));
+        expect(capturedPayload, isNotNull);
+        expect(capturedPayload!['thinking'], {'type': 'disabled'});
       });
     });
 
