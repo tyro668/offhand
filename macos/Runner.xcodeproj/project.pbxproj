@@ -243,6 +243,7 @@
 				33CC10EB2044A3C60003C045 /* Resources */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
+				7A4C92B02CDB4D5400AF0011 /* Create Offhand Helper */,
 				5C8DCC7EE348A3D22E4C87B0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
@@ -380,6 +381,25 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		7A4C92B02CDB4D5400AF0011 /* Create Offhand Helper */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Offhand Helper";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\nDART_BIN=\"${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart\"\nif [ ! -x \"$DART_BIN\" ]; then\n  DART_BIN=\"$(command -v dart || true)\"\nfi\n\nif [ -z \"$DART_BIN\" ] || [ ! -x \"$DART_BIN\" ]; then\n  echo \"error: dart executable not found\" >&2\n  exit 1\nfi\n\nLEGACY_HELPER=\"${TARGET_BUILD_DIR}/${EXECUTABLE_FOLDER_PATH}/Offhand Helper\"\nHELPER_BUILD_DIR=\"${DERIVED_FILE_DIR}/OffhandHelperCli\"\nHELPER_INSTALL_DIR=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers/Offhand Helper\"\nHELPER_EXECUTABLE=\"${HELPER_INSTALL_DIR}/bin/Offhand Helper\"\n\nrm -f \"$LEGACY_HELPER\"\nrm -rf \"$HELPER_BUILD_DIR\" \"$HELPER_INSTALL_DIR\"\n\"$DART_BIN\" build cli -o \"$HELPER_BUILD_DIR\" -t \"${SRCROOT}/../bin/offhand_asr_worker.dart\" --verbosity=warning\n\nmkdir -p \"$(dirname \"$HELPER_INSTALL_DIR\")\"\ncp -R \"${HELPER_BUILD_DIR}/bundle\" \"$HELPER_INSTALL_DIR\"\nmv \"${HELPER_INSTALL_DIR}/bin/offhand_asr_worker\" \"$HELPER_EXECUTABLE\"\nchmod +x \"$HELPER_EXECUTABLE\"\n\nif [ \"${CODE_SIGNING_ALLOWED:-NO}\" = \"YES\" ]; then\n  SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:-${CODE_SIGN_IDENTITY:-}}\"\n  if [ -n \"$SIGN_IDENTITY\" ]; then\n    for CODE_PATH in \"${HELPER_INSTALL_DIR}\"/lib/*.dylib \"$HELPER_EXECUTABLE\"; do\n      if [ -e \"$CODE_PATH\" ]; then\n        codesign --force --sign \"$SIGN_IDENTITY\" ${OTHER_CODE_SIGN_FLAGS:-} \"$CODE_PATH\"\n      fi\n    done\n  fi\nfi\n";
 		};
 		67ECE92DC5AF55BE5D66FA19 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

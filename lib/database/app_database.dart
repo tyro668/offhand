@@ -14,7 +14,7 @@ import 'transcription_entity.dart';
 part 'app_database.g.dart';
 
 /// 统一的 SQLite 数据库，使用 Floor ORM 管理历史记录和所有配置数据。
-@Database(version: 6, entities: [SettingEntity, TranscriptionEntity])
+@Database(version: 8, entities: [SettingEntity, TranscriptionEntity])
 abstract class AppDatabase extends FloorDatabase {
   SettingDao get settingDao;
   TranscriptionDao get transcriptionDao;
@@ -144,6 +144,30 @@ abstract class AppDatabase extends FloorDatabase {
       if (!hasCol) {
         await database.execute(
           'ALTER TABLE transcriptions ADD COLUMN raw_text TEXT',
+        );
+      }
+    }),
+    Migration(6, 7, (database) async {
+      final cols = await database.rawQuery('PRAGMA table_info(transcriptions)');
+      final hasCol = cols.any((c) => c['name'] == 'llm_processing_duration_ms');
+      if (!hasCol) {
+        await database.execute(
+          'ALTER TABLE transcriptions ADD COLUMN llm_processing_duration_ms INTEGER',
+        );
+      }
+    }),
+    Migration(7, 8, (database) async {
+      final cols = await database.rawQuery('PRAGMA table_info(transcriptions)');
+      final hasInputCol = cols.any((c) => c['name'] == 'llm_input_tokens');
+      final hasOutputCol = cols.any((c) => c['name'] == 'llm_output_tokens');
+      if (!hasInputCol) {
+        await database.execute(
+          'ALTER TABLE transcriptions ADD COLUMN llm_input_tokens INTEGER',
+        );
+      }
+      if (!hasOutputCol) {
+        await database.execute(
+          'ALTER TABLE transcriptions ADD COLUMN llm_output_tokens INTEGER',
         );
       }
     }),

@@ -25,6 +25,9 @@ void main() {
         text: 'Test transcription text',
         createdAt: DateTime.now(),
         duration: const Duration(seconds: 5),
+        llmProcessingDuration: const Duration(milliseconds: 1200),
+        llmInputTokens: 88,
+        llmOutputTokens: 21,
         provider: 'TestProvider',
         model: 'test-model',
         providerConfigJson: '{}',
@@ -36,6 +39,9 @@ void main() {
       expect(items.any((t) => t.id == 'test-001'), isTrue);
       final found = items.firstWhere((t) => t.id == 'test-001');
       expect(found.text, 'Test transcription text');
+      expect(found.llmProcessingDuration?.inMilliseconds, 1200);
+      expect(found.llmInputTokens, 88);
+      expect(found.llmOutputTokens, 21);
       expect(found.provider, 'TestProvider');
       expect(found.model, 'test-model');
     });

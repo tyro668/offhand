@@ -7,6 +7,32 @@ import 'package:voicetype/services/ai_enhance_service.dart';
 
 void main() {
   group('AiEnhanceService', () {
+    group('token estimates', () {
+      test('builds input from resolved prompt and source text', () {
+        const config = AiEnhanceConfig(
+          baseUrl: 'https://example.com/v1',
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '请作为 {agentName} 优化文本',
+          agentName: 'Offhand',
+        );
+
+        final input = AiEnhanceService(
+          config,
+        ).buildInputForTokenEstimate('今天的会议记录');
+
+        expect(input, contains('请作为 Offhand 优化文本'));
+        expect(input, contains('请严格根据 system 提示词对以下文本做优化'));
+        expect(input, contains('<source>\n今天的会议记录\n</source>'));
+      });
+
+      test('counts output from final returned text only', () {
+        final outputTokens = AiEnhanceService.estimateTokenCount('abcd中文!');
+
+        expect(outputTokens, 4);
+      });
+    });
+
     group('enhance', () {
       test('returns enhanced text for 200 response', () async {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);

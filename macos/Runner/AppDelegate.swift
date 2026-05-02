@@ -28,6 +28,7 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   var lastFnDownTime: CFAbsoluteTime = 0
   var lastFnEmitTime: CFAbsoluteTime = 0
   var lastFnEmitType: String = ""
+  var asrWorkerEngine: FlutterEngine?
   private lazy var logFileURL: URL = {
     let libraryDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
     let logsDir = libraryDir?.appendingPathComponent("Logs")
@@ -38,12 +39,26 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
     return URL(fileURLWithPath: "/tmp/voicetype.log")
   }()
 
+  private var isAsrWorkerProcess: Bool {
+    ProcessInfo.processInfo.arguments.contains("--asr-worker")
+  }
+
+  override func applicationWillFinishLaunching(_ notification: Notification) {
+    if isAsrWorkerProcess {
+      NSApp.setActivationPolicy(.accessory)
+    }
+    super.applicationWillFinishLaunching(notification)
+  }
+
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     // 关闭主窗口不退出应用，让录音 overlay 可以独立存在
     return false
   }
 
   override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    if isAsrWorkerProcess {
+      return false
+    }
     if !flag {
       showMainWindow()
     }
@@ -55,6 +70,25 @@ class AppDelegate: FlutterAppDelegate, NSWindowDelegate {
   }
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
+    if isAsrWorkerProcess {
+      NSApp.setActivationPolicy(.accessory)
+      mainFlutterWindow?.isExcludedFromWindowsMenu = true
+      mainFlutterWindow?.orderOut(nil)
+      let project = FlutterDartProject()
+      project.dartEntrypointArguments = ["--asr-worker"]
+      let engine = FlutterEngine(
+        name: "Offhand Helper",
+        project: project,
+        allowHeadlessExecution: true
+      )
+      asrWorkerEngine = engine
+      if !engine.run(withEntrypoint: nil) {
+        fputs("failed to start ASR worker engine\n", stderr)
+        NSApp.terminate(nil)
+      }
+      return
+    }
+
     // 获取 FlutterViewController 并注册 MethodChannel
     guard let controller = mainFlutterWindow?.contentViewController as? FlutterViewController else {
       return

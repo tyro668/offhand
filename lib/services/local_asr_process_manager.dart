@@ -18,8 +18,18 @@ class LocalAsrProcessManager {
   Timer? _idleTimer;
   int _idleUnloadMinutes = 3;
   int _nextRequestId = 0;
+  int? _lastWorkerExitCode;
+  String? _lastWorkerKillReason;
 
   final Map<String, _PendingAsrRequest> _pending = {};
+
+  bool get isWorkerRunningForTest => _process != null;
+
+  int? get lastWorkerExitCodeForTest => _lastWorkerExitCode;
+
+  String? get lastWorkerKillReasonForTest => _lastWorkerKillReason;
+
+  Future<void> shutdownWorkerForTest() => _shutdownWorker();
 
   Future<String> transcribe({
     required String modelDir,
@@ -123,14 +133,24 @@ class LocalAsrProcessManager {
   }
 
   Future<void> _startWorker() async {
-    await LogService.info('LOCAL_ASR', 'starting ASR worker');
+    final workerExecutable = await _resolveWorkerExecutable();
+    final workerEnvironment = _resolveWorkerEnvironment(workerExecutable);
+    await LogService.info(
+      'LOCAL_ASR',
+      'starting ASR worker executable=$workerExecutable',
+    );
 
-    final process = await Process.start(Platform.resolvedExecutable, [
-      '--asr-worker',
-    ], mode: ProcessStartMode.normal);
+    final process = await Process.start(
+      workerExecutable,
+      ['--asr-worker'],
+      environment: workerEnvironment,
+      mode: ProcessStartMode.normal,
+    );
 
     _process = process;
     _readyCompleter = Completer<void>();
+    _lastWorkerExitCode = null;
+    _lastWorkerKillReason = null;
 
     _stdoutSubscription = process.stdout
         .transform(utf8.decoder)
@@ -160,6 +180,65 @@ class LocalAsrProcessManager {
       _killWorker('ready timeout');
       throw SenseVoiceException('本地 ASR worker 启动超时');
     }
+  }
+
+  Future<String> _resolveWorkerExecutable() async {
+    final override = Platform.environment['OFFHAND_ASR_WORKER_EXECUTABLE']
+        ?.trim();
+    if (override != null && override.isNotEmpty) {
+      return override;
+    }
+
+    if (!Platform.isMacOS) {
+      return Platform.resolvedExecutable;
+    }
+
+    final executable = File(Platform.resolvedExecutable);
+    final helperExecutable = File(
+      [
+        executable.parent.parent.path,
+        'Helpers',
+        'Offhand Helper',
+        'bin',
+        'Offhand Helper',
+      ].join(Platform.pathSeparator),
+    );
+    if (await helperExecutable.exists()) {
+      return helperExecutable.path;
+    }
+
+    throw SenseVoiceException(
+      'Offhand Helper 后台服务未找到: ${helperExecutable.path}',
+    );
+  }
+
+  Map<String, String>? _resolveWorkerEnvironment(String workerExecutable) {
+    if (!Platform.isMacOS) {
+      return null;
+    }
+
+    final executable = File(workerExecutable);
+    final candidates = <String>[
+      [executable.parent.path, '..', 'lib'].join(Platform.pathSeparator),
+      [
+        executable.parent.path,
+        '..',
+        '..',
+        '..',
+        'Frameworks',
+      ].join(Platform.pathSeparator),
+    ];
+
+    for (final candidate in candidates) {
+      final library = File(
+        [candidate, 'libsherpa-onnx-c-api.dylib'].join(Platform.pathSeparator),
+      );
+      if (library.existsSync()) {
+        return {'OFFHAND_SHERPA_LIBRARY_DIR': library.parent.path};
+      }
+    }
+
+    return null;
   }
 
   void _handleWorkerLine(String line) {
@@ -208,6 +287,7 @@ class LocalAsrProcessManager {
   void _handleWorkerExit(Process process, int code) {
     if (!identical(_process, process)) return;
 
+    _lastWorkerExitCode = code;
     _process = null;
     _readyCompleter = null;
     _idleTimer?.cancel();
@@ -262,6 +342,7 @@ class LocalAsrProcessManager {
     if (process == null) return;
 
     LogService.warn('LOCAL_ASR', 'killing ASR worker: $reason').ignore();
+    _lastWorkerKillReason = reason;
     process.kill();
     _process = null;
     _readyCompleter = null;

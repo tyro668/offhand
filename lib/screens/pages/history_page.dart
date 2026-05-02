@@ -28,9 +28,11 @@ class _HistoryPageState extends State<HistoryPage> {
   ColorScheme get _cs => Theme.of(context).colorScheme;
   static const _termMemoryService = DictationTermMemoryService();
   static const _editedBadgeText = '已人工修正';
+  static const _historyPageSize = 20;
 
   /// 记录哪些 item id 的原始文本处于展开状态
   final Set<String> _expandedRawText = {};
+  int _currentPage = 0;
 
   void _showFloatingSnackBar(String message, {Duration? duration}) {
     final text = message.trim();
@@ -55,8 +57,15 @@ class _HistoryPageState extends State<HistoryPage> {
     final recording = context.watch<RecordingProvider>();
     final settings = context.watch<SettingsProvider>();
     final history = recording.history;
-    final contextHistoryCount = recording.contextHistory.length;
     final pendingCandidates = settings.dictationTermPendingCandidates;
+    final totalPages = _totalHistoryPages(history.length);
+    final currentPage = _clampedHistoryPage(history.length);
+    if (_currentPage != currentPage) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _currentPage = currentPage);
+      });
+    }
     final hasLearnableEditedHistory = history.any(
       (item) =>
           recording.isHistoryEdited(item.id) &&
@@ -68,133 +77,136 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Container(
       color: Colors.transparent,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: const EdgeInsets.fromLTRB(34, 24, 34, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: ModernSectionHeader(
-                  icon: Icons.insights_outlined,
-                  title: '转写总览',
-                  subtitle: '先看整体数量，再处理待确认术语和历史记录。',
-                ),
-              ),
-              if (hasLearnableEditedHistory)
-                IconButton(
-                  icon: Icon(
-                    Icons.sync_alt_rounded,
-                    color: _cs.primary,
-                    size: 22,
-                  ),
-                  tooltip: '同步历史修正',
-                  onPressed: () =>
-                      _syncEditedHistoryCorrections(recording, settings),
-                ),
-              if (history.isNotEmpty)
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: _cs.outline.withValues(alpha: 0.55),
-                    size: 22,
-                  ),
-                  tooltip: l10n.clearAll,
-                  onPressed: () => _confirmClearAll(context, recording, l10n),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildHistoryOverview(
-            history.length,
-            pendingCandidates.length,
-            contextHistoryCount,
-            l10n,
-          ),
-          const SizedBox(height: 14),
           if (pendingCandidates.isNotEmpty) ...[
             _buildPendingCandidatesSummary(pendingCandidates),
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
           ],
           Expanded(
             child: history.isEmpty
                 ? _buildEmpty(l10n)
-                : _buildList(context, recording, history, l10n),
+                : _buildList(
+                    context,
+                    recording,
+                    history,
+                    l10n,
+                    pageStart: currentPage * _historyPageSize,
+                  ),
+          ),
+          const SizedBox(height: 10),
+          _buildArchiveHeader(
+            recording: recording,
+            settings: settings,
+            historyCount: history.length,
+            currentPage: currentPage,
+            totalPages: totalPages,
+            hasLearnableEditedHistory: hasLearnableEditedHistory,
+            l10n: l10n,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHistoryOverview(
-    int historyCount,
-    int pendingCount,
-    int contextHistoryCount,
-    AppLocalizations l10n,
-  ) {
-    return ModernSurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      backgroundColor: _cs.surfaceContainerLow.withValues(alpha: 0.38),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _buildOverviewChip(
-            icon: Icons.history_rounded,
-            label: l10n.history,
-            value: '$historyCount',
-          ),
-          _buildOverviewChip(
-            icon: Icons.pending_actions_outlined,
-            label: '待确认术语',
-            value: '$pendingCount',
-          ),
-          _buildOverviewChip(
-            icon: Icons.auto_awesome_outlined,
-            label: l10n.historyContextCount,
-            value: '$contextHistoryCount',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewChip({
-    required IconData icon,
-    required String label,
-    required String value,
+  Widget _buildArchiveHeader({
+    required RecordingProvider recording,
+    required SettingsProvider settings,
+    required int historyCount,
+    required int currentPage,
+    required int totalPages,
+    required bool hasLearnableEditedHistory,
+    required AppLocalizations l10n,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: _cs.primary.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
+    return _buildArchiveToolbar(
+      recording: recording,
+      settings: settings,
+      historyCount: historyCount,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      hasLearnableEditedHistory: hasLearnableEditedHistory,
+      l10n: l10n,
+    );
+  }
+
+  int _totalHistoryPages(int itemCount) =>
+      itemCount == 0 ? 0 : ((itemCount - 1) ~/ _historyPageSize) + 1;
+
+  int _clampedHistoryPage(int itemCount) {
+    final totalPages = _totalHistoryPages(itemCount);
+    if (totalPages == 0) return 0;
+    return _currentPage.clamp(0, totalPages - 1).toInt();
+  }
+
+  Widget _buildArchiveToolbar({
+    required RecordingProvider recording,
+    required SettingsProvider settings,
+    required int historyCount,
+    required int currentPage,
+    required int totalPages,
+    required bool hasLearnableEditedHistory,
+    required AppLocalizations l10n,
+  }) {
+    final hasHistory = historyCount > 0;
+
+    final toolbarItems = <Widget>[
+      if (hasLearnableEditedHistory)
+        _ArchivePagerButton(
+          label: '同步修正',
+          enabled: true,
+          onPressed: () => _syncEditedHistoryCorrections(recording, settings),
+        ),
+      _ArchivePagerButton(
+        label: '上一页',
+        enabled: hasHistory && currentPage > 0,
+        onPressed: () {
+          setState(() => _currentPage = currentPage - 1);
+        },
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: _cs.primary),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: _cs.onSurfaceVariant,
+      Text(
+        hasHistory ? '${currentPage + 1} / $totalPages' : '0 / 0',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: _cs.onSurfaceVariant.withValues(alpha: 0.78),
+        ),
+      ),
+      _ArchivePagerButton(
+        label: '下一页',
+        enabled: hasHistory && currentPage < totalPages - 1,
+        onPressed: () {
+          setState(() => _currentPage = currentPage + 1);
+        },
+      ),
+      _ArchivePagerButton(
+        label: l10n.clear,
+        enabled: hasHistory,
+        destructive: true,
+        onPressed: () => _confirmClearAll(context, recording, l10n),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < toolbarItems.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  toolbarItems[i],
+                ],
+              ],
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: _cs.onSurface,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -352,9 +364,12 @@ class _HistoryPageState extends State<HistoryPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _cs.surfaceContainerLow,
+        color: Color.alphaBlend(
+          _cs.primary.withValues(alpha: 0.018),
+          _cs.surfaceContainerLow,
+        ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
       ),
       child: Wrap(
         spacing: 8,
@@ -410,258 +425,305 @@ class _HistoryPageState extends State<HistoryPage> {
     BuildContext context,
     RecordingProvider recording,
     List<Transcription> history,
-    AppLocalizations l10n,
-  ) {
-    return ListView.builder(
-      itemCount: history.length,
-      itemBuilder: (context, index) {
-        final item = history[index];
-        final number = history.length - index;
-        final dateStr = DateFormat('M月d日 HH:mm').format(item.createdAt);
-        final wasEdited = recording.isHistoryEdited(item.id);
-        final useForContext = recording.isHistoryUsedForContext(item.id);
+    AppLocalizations l10n, {
+    required int pageStart,
+  }) {
+    final visibleHistory = history
+        .skip(pageStart)
+        .take(_historyPageSize)
+        .toList(growable: false);
 
-        return ModernSurfaceCard(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 头部：编号 + 时间 + 操作按钮
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEDE7F6),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '#$number',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF5C3BBF),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    dateStr,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _cs.onSurfaceVariant.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  if (wasEdited) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _cs.secondaryContainer,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _editedBadgeText,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _cs.onSecondaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 8),
-                  FilterChip(
-                    selected: useForContext,
-                    showCheckmark: false,
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    selectedColor: _cs.primary.withValues(alpha: 0.10),
-                    backgroundColor: _cs.primary.withValues(alpha: 0.03),
-                    side: BorderSide(
-                      color: _cs.primary.withValues(
-                        alpha: useForContext ? 0.16 : 0.08,
-                      ),
-                    ),
-                    avatar: Icon(
-                      useForContext
-                          ? Icons.check_box_rounded
-                          : Icons.check_box_outline_blank_rounded,
-                      size: 16,
-                      color: useForContext ? _cs.primary : _cs.onSurfaceVariant,
-                    ),
-                    label: Text(
-                      useForContext
-                          ? l10n.historyContextApplied
-                          : l10n.historyContextSkipped,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: useForContext
-                            ? _cs.primary
-                            : _cs.onSurfaceVariant,
-                      ),
-                    ),
-                    onSelected: (value) async {
-                      await recording.setHistoryUsedForContext(item.id, value);
-                    },
-                  ),
-                  const Spacer(),
-                  // 复制按钮
-                  _ActionIcon(
-                    icon: Icons.copy_outlined,
-                    tooltip: l10n.copy,
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: item.text));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l10n.copiedToClipboard),
-                          duration: const Duration(seconds: 1),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  _ActionIcon(
-                    icon: Icons.edit_outlined,
-                    tooltip: l10n.edit,
-                    onTap: () => _editHistoryItem(item),
-                  ),
-                  const SizedBox(width: 4),
-                  // 删除按钮
-                  _ActionIcon(
-                    icon: Icons.delete_outline,
-                    tooltip: l10n.delete,
-                    color: Colors.red.shade300,
-                    onTap: () => recording.removeHistory(index),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // 文本内容（右键可加入词典）
-              SelectableText(
-                item.text,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  color: _cs.onSurface.withValues(alpha: 0.88),
-                  height: 1.65,
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: visibleHistory.length,
+      itemBuilder: (context, index) {
+        final item = visibleHistory[index];
+        final historyIndex = pageStart + index;
+        final wasEdited = recording.isHistoryEdited(item.id);
+
+        return _buildArchiveCard(
+          item: item,
+          historyIndex: historyIndex,
+          totalCount: history.length,
+          recording: recording,
+          l10n: l10n,
+          wasEdited: wasEdited,
+        );
+      },
+    );
+  }
+
+  Widget _buildArchiveCard({
+    required Transcription item,
+    required int historyIndex,
+    required int totalCount,
+    required RecordingProvider recording,
+    required AppLocalizations l10n,
+    required bool wasEdited,
+  }) {
+    final isExpanded = _expandedRawText.contains(item.id);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          _cs.primary.withValues(alpha: 0.022),
+          _cs.surface.withValues(alpha: 0.96),
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: _cs.primary.withValues(alpha: 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildArchiveActions(
+            item: item,
+            historyIndex: historyIndex,
+            totalCount: totalCount,
+            recording: recording,
+            l10n: l10n,
+            isExpanded: isExpanded,
+          ),
+          const SizedBox(height: 6),
+          _buildSelectableHistoryText(item, l10n),
+          const SizedBox(height: 6),
+          _buildArchiveMeta(item: item, wasEdited: wasEdited),
+          if (item.hasRawText && isExpanded) ...[
+            const SizedBox(height: 8),
+            _buildRawTextPanel(item),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArchiveActions({
+    required Transcription item,
+    required int historyIndex,
+    required int totalCount,
+    required RecordingProvider recording,
+    required AppLocalizations l10n,
+    required bool isExpanded,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ArchiveActionButton(
+                  label: l10n.edit,
+                  tooltip: l10n.edit,
+                  onTap: () => _editHistoryItem(item),
                 ),
-                contextMenuBuilder: (ctx, editableTextState) {
-                  final selectedText = editableTextState
-                      .textEditingValue
-                      .selection
-                      .textInside(editableTextState.textEditingValue.text);
-                  final builtinItems = editableTextState.contextMenuButtonItems;
-                  return AdaptiveTextSelectionToolbar.buttonItems(
-                    anchors: editableTextState.contextMenuAnchors,
-                    buttonItems: [
-                      ...builtinItems,
-                      if (selectedText.trim().isNotEmpty)
-                        ContextMenuButtonItem(
-                          label: l10n.addToDictionary,
-                          onPressed: () {
-                            ContextMenuController.removeAny();
-                            SchedulerBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              _addToDictionary(selectedText.trim());
-                            });
-                          },
-                        ),
-                      if (selectedText.trim().isNotEmpty)
-                        ContextMenuButtonItem(
-                          label: '作为实体学习',
-                          onPressed: () {
-                            ContextMenuController.removeAny();
-                            SchedulerBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              _addSelectedTextAsEntity(selectedText.trim());
-                            });
-                          },
-                        ),
-                    ],
-                  );
-                },
-              ),
-              // 原始录音文字（折叠/展开）
-              if (item.hasRawText) ...[
-                const SizedBox(height: 8),
-                _buildRawTextToggle(item, l10n),
+                const SizedBox(width: 4),
+                _ArchiveActionButton(
+                  label: l10n.copy,
+                  tooltip: l10n.copy,
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: item.text));
+                    _showFloatingSnackBar(
+                      l10n.copiedToClipboard,
+                      duration: const Duration(seconds: 1),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+                _ArchiveActionButton(
+                  label: l10n.delete,
+                  tooltip: l10n.delete,
+                  destructive: true,
+                  onTap: () {
+                    recording.removeHistory(historyIndex);
+                    final nextCount = totalCount - 1;
+                    final nextPage = _clampedHistoryPage(nextCount);
+                    if (nextPage != _currentPage || isExpanded) {
+                      setState(() {
+                        _currentPage = nextPage;
+                        _expandedRawText.remove(item.id);
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(width: 4),
+                _ArchiveActionButton(
+                  label: l10n.originalSttText,
+                  tooltip: l10n.originalSttText,
+                  enabled: item.hasRawText,
+                  selected: isExpanded,
+                  onTap: item.hasRawText
+                      ? () {
+                          setState(() {
+                            if (isExpanded) {
+                              _expandedRawText.remove(item.id);
+                            } else {
+                              _expandedRawText.add(item.id);
+                            }
+                          });
+                        }
+                      : null,
+                ),
               ],
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildRawTextToggle(dynamic item, AppLocalizations l10n) {
-    final isExpanded = _expandedRawText.contains(item.id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () {
-            setState(() {
-              if (isExpanded) {
-                _expandedRawText.remove(item.id);
-              } else {
-                _expandedRawText.add(item.id);
-              }
-            });
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: _cs.outline.withValues(alpha: 0.65),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  l10n.originalSttText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _cs.outline.withValues(alpha: 0.65),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (isExpanded) ...[
-          const SizedBox(height: 4),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _cs.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: SelectableText(
-              item.rawText ?? '',
-              style: TextStyle(
-                fontSize: 13,
-                color: _cs.onSurfaceVariant.withValues(alpha: 0.8),
-                height: 1.55,
+  Widget _buildSelectableHistoryText(
+    Transcription item,
+    AppLocalizations l10n,
+  ) {
+    return SelectableText(
+      item.text,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: _cs.onSurface.withValues(alpha: 0.92),
+        height: 1.45,
+      ),
+      contextMenuBuilder: (ctx, editableTextState) {
+        final selectedText = editableTextState.textEditingValue.selection
+            .textInside(editableTextState.textEditingValue.text);
+        final builtinItems = editableTextState.contextMenuButtonItems;
+        return AdaptiveTextSelectionToolbar.buttonItems(
+          anchors: editableTextState.contextMenuAnchors,
+          buttonItems: [
+            ...builtinItems,
+            if (selectedText.trim().isNotEmpty)
+              ContextMenuButtonItem(
+                label: l10n.addToDictionary,
+                onPressed: () {
+                  ContextMenuController.removeAny();
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _addToDictionary(selectedText.trim());
+                  });
+                },
               ),
-            ),
+            if (selectedText.trim().isNotEmpty)
+              ContextMenuButtonItem(
+                label: '作为实体学习',
+                onPressed: () {
+                  ContextMenuController.removeAny();
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _addSelectedTextAsEntity(selectedText.trim());
+                  });
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildArchiveMeta({
+    required Transcription item,
+    required bool wasEdited,
+  }) {
+    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(item.createdAt);
+
+    return Wrap(
+      spacing: 5,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _buildMetaText(dateStr),
+        if (item.llmProcessingDuration != null) ...[
+          _buildMetaDot(),
+          _buildMetaText(
+            '文本增强耗时 ${item.llmProcessingDuration!.inMilliseconds} ms',
           ),
         ],
+        if (item.llmInputTokens != null) ...[
+          _buildMetaDot(),
+          _buildMetaText('输入 tokens ${item.llmInputTokens}'),
+        ],
+        if (item.llmOutputTokens != null) ...[
+          _buildMetaDot(),
+          _buildMetaText('输出 tokens ${item.llmOutputTokens}'),
+        ],
+        if (wasEdited) ...[_buildMetaDot(), _buildMetaBadge(_editedBadgeText)],
       ],
+    );
+  }
+
+  Widget _buildMetaText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontStyle: FontStyle.italic,
+        fontWeight: FontWeight.w400,
+        color: _cs.onSurfaceVariant.withValues(alpha: 0.56),
+        height: 1.15,
+      ),
+    );
+  }
+
+  Widget _buildMetaDot() {
+    return Text(
+      '·',
+      style: TextStyle(
+        fontSize: 11,
+        fontStyle: FontStyle.italic,
+        fontWeight: FontWeight.w400,
+        color: _cs.onSurfaceVariant.withValues(alpha: 0.42),
+      ),
+    );
+  }
+
+  Widget _buildMetaBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: _cs.secondaryContainer.withValues(alpha: 0.68),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: _cs.onSecondaryContainer,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRawTextPanel(Transcription item) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          _cs.primary.withValues(alpha: 0.018),
+          _cs.surfaceContainerLow,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
+      ),
+      child: SelectableText(
+        item.rawText ?? '',
+        style: TextStyle(
+          fontSize: 12.5,
+          color: _cs.onSurfaceVariant.withValues(alpha: 0.82),
+          height: 1.4,
+        ),
+      ),
     );
   }
 
@@ -939,6 +1001,12 @@ class _HistoryPageState extends State<HistoryPage> {
           FilledButton(
             onPressed: () {
               recording.clearAllHistory();
+              if (mounted) {
+                setState(() {
+                  _currentPage = 0;
+                  _expandedRawText.clear();
+                });
+              }
               Navigator.pop(ctx);
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -950,33 +1018,152 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 }
 
-class _ActionIcon extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final Color? color;
-  final VoidCallback onTap;
+class _ArchivePagerButton extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final bool destructive;
+  final VoidCallback onPressed;
 
-  const _ActionIcon({
-    required this.icon,
+  const _ArchivePagerButton({
+    required this.label,
+    required this.enabled,
+    this.destructive = false,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final minWidth = label.runes.length > 2 ? 54.0 : 38.0;
+    final accent = destructive ? Colors.redAccent : cs.primary;
+    final borderColor = enabled
+        ? destructive
+              ? accent.withValues(alpha: 0.18)
+              : cs.primary.withValues(alpha: 0.08)
+        : cs.primary.withValues(alpha: 0.05);
+    final background = enabled
+        ? Color.alphaBlend(
+            cs.primary.withValues(alpha: destructive ? 0.0 : 0.022),
+            cs.surface.withValues(alpha: 0.96),
+          )
+        : Color.alphaBlend(
+            cs.primary.withValues(alpha: 0.012),
+            cs.surfaceContainerLow.withValues(alpha: 0.55),
+          );
+    final foreground = enabled
+        ? destructive
+              ? accent
+              : cs.onSurfaceVariant.withValues(alpha: 0.84)
+        : cs.onSurfaceVariant.withValues(alpha: 0.34);
+
+    return Tooltip(
+      message: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: enabled ? onPressed : null,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: minWidth),
+            child: Ink(
+              height: 26,
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderColor),
+              ),
+              child: Center(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: foreground,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArchiveActionButton extends StatelessWidget {
+  final String label;
+  final String tooltip;
+  final bool enabled;
+  final bool selected;
+  final bool destructive;
+  final VoidCallback? onTap;
+
+  const _ArchiveActionButton({
+    required this.label,
     required this.tooltip,
-    this.color,
+    this.enabled = true,
+    this.selected = false,
+    this.destructive = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final minWidth = label.runes.length > 2 ? 54.0 : 38.0;
+    final accent = destructive ? Colors.redAccent : cs.primary;
+    final foreground = !enabled
+        ? cs.onSurfaceVariant.withValues(alpha: 0.34)
+        : destructive
+        ? Colors.redAccent
+        : selected
+        ? cs.primary
+        : cs.onSurfaceVariant.withValues(alpha: 0.84);
+    final background = selected
+        ? accent.withValues(alpha: 0.08)
+        : Color.alphaBlend(
+            cs.primary.withValues(alpha: 0.022),
+            cs.surface.withValues(alpha: 0.96),
+          );
+    final borderColor = !enabled
+        ? cs.primary.withValues(alpha: 0.05)
+        : selected || destructive
+        ? accent.withValues(alpha: destructive ? 0.18 : 0.22)
+        : cs.primary.withValues(alpha: 0.08);
+
     return Tooltip(
       message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(7),
-          child: Icon(
-            icon,
-            size: 18,
-            color: color ?? cs.outline.withValues(alpha: 0.55),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: enabled ? onTap : null,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: minWidth),
+            child: Ink(
+              height: 26,
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderColor),
+              ),
+              child: Center(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: foreground,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

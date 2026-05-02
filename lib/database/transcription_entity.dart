@@ -18,6 +18,15 @@ class TranscriptionEntity {
   @ColumnInfo(name: 'duration_ms')
   final int durationMs;
 
+  @ColumnInfo(name: 'llm_processing_duration_ms')
+  final int? llmProcessingDurationMs;
+
+  @ColumnInfo(name: 'llm_input_tokens')
+  final int? llmInputTokens;
+
+  @ColumnInfo(name: 'llm_output_tokens')
+  final int? llmOutputTokens;
+
   final String provider;
 
   final String model;
@@ -31,6 +40,9 @@ class TranscriptionEntity {
     this.rawText,
     required this.createdAt,
     required this.durationMs,
+    this.llmProcessingDurationMs,
+    this.llmInputTokens,
+    this.llmOutputTokens,
     required this.provider,
     required this.model,
     required this.providerConfig,
@@ -43,6 +55,11 @@ class TranscriptionEntity {
     rawText: rawText,
     createdAt: DateTime.parse(createdAt),
     duration: Duration(milliseconds: durationMs),
+    llmProcessingDuration: llmProcessingDurationMs == null
+        ? null
+        : Duration(milliseconds: llmProcessingDurationMs!),
+    llmInputTokens: llmInputTokens,
+    llmOutputTokens: llmOutputTokens,
     provider: provider,
     model: model,
     providerConfigJson: providerConfig,
@@ -55,6 +72,9 @@ class TranscriptionEntity {
     rawText: t.rawText,
     createdAt: t.createdAt.toIso8601String(),
     durationMs: t.duration.inMilliseconds,
+    llmProcessingDurationMs: t.llmProcessingDuration?.inMilliseconds,
+    llmInputTokens: t.llmInputTokens,
+    llmOutputTokens: t.llmOutputTokens,
     provider: t.provider,
     model: t.model,
     providerConfig: t.providerConfigJson,

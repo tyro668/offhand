@@ -2,11 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'sense_voice_ffi_service.dart';
+import 'sense_voice_worker_service.dart';
 
 class LocalAsrWorkerMain {
   static Future<void> run() async {
-    SenseVoiceFfiService.useFileLogging = false;
     await _send({'type': 'ready', 'protocolVersion': 1});
 
     await for (final line
@@ -75,8 +74,8 @@ class LocalAsrWorkerMain {
     final audioPath = message['audioPath']?.toString() ?? '';
     final prompt = message['prompt']?.toString();
 
-    final service = SenseVoiceFfiService(modelPath: modelDir);
-    final text = await service.transcribeInProcess(audioPath, prompt: prompt);
+    final service = SenseVoiceWorkerService(modelPath: modelDir);
+    final text = await service.transcribe(audioPath, prompt: prompt);
     await _send({'type': 'result', 'requestId': requestId, 'text': text});
   }
 
@@ -85,8 +84,8 @@ class LocalAsrWorkerMain {
     Map<String, dynamic> message,
   ) async {
     final modelDir = message['modelDir']?.toString() ?? '';
-    final service = SenseVoiceFfiService(modelPath: modelDir);
-    final result = await service.checkAvailabilityInProcess();
+    final service = SenseVoiceWorkerService(modelPath: modelDir);
+    final result = await service.checkAvailability();
     await _send({
       'type': 'availability',
       'requestId': requestId,

@@ -799,6 +799,9 @@ class RecordingProvider extends ChangeNotifier {
         'finalize start: provider=${config.name} model=${config.model} rawTextLength=${rawText.length}',
       );
       var finalText = rawText;
+      Duration? llmProcessingDuration;
+      int? llmInputTokens;
+      int? llmOutputTokens;
 
       if (aiEnhanceEnabled && aiEnhanceConfig != null) {
         try {
@@ -827,6 +830,10 @@ class RecordingProvider extends ChangeNotifier {
             }
           }
           final enhancer = AiEnhanceService(effectiveEnhanceConfig);
+          final estimatedInputTokens = AiEnhanceService.estimateTokenCount(
+            enhancer.buildInputForTokenEstimate(rawText),
+          );
+          final llmSw = Stopwatch()..start();
 
           if (useStreaming) {
             // Streaming mode: show text in real-time on overlay
@@ -874,9 +881,13 @@ class RecordingProvider extends ChangeNotifier {
               } catch (_) {}
             }
           }
+          llmSw.stop();
+          llmProcessingDuration = llmSw.elapsed;
+          llmInputTokens = estimatedInputTokens;
+          llmOutputTokens = AiEnhanceService.estimateTokenCount(finalText);
           await LogService.info(
             'TRANSCRIBE',
-            'ai enhance done: ${sw.elapsedMilliseconds}ms',
+            'ai enhance done: ${llmProcessingDuration.inMilliseconds}ms',
           );
         } catch (e) {
           await LogService.error('TRANSCRIBE', 'ai enhance failed: $e');
@@ -894,6 +905,9 @@ class RecordingProvider extends ChangeNotifier {
           rawText: aiEnhanceEnabled ? rawText : null,
           createdAt: DateTime.now(),
           duration: duration,
+          llmProcessingDuration: llmProcessingDuration,
+          llmInputTokens: llmInputTokens,
+          llmOutputTokens: llmOutputTokens,
           provider: config.name,
           model: config.model,
           providerConfigJson: json.encode(safeConfig.toJson()),
@@ -1046,6 +1060,9 @@ class RecordingProvider extends ChangeNotifier {
       rawText: current.rawText,
       createdAt: current.createdAt,
       duration: current.duration,
+      llmProcessingDuration: current.llmProcessingDuration,
+      llmInputTokens: current.llmInputTokens,
+      llmOutputTokens: current.llmOutputTokens,
       provider: current.provider,
       model: current.model,
       providerConfigJson: current.providerConfigJson,

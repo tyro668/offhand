@@ -2,6 +2,26 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  private var isAsrWorkerProcess: Bool {
+    ProcessInfo.processInfo.arguments.contains("--asr-worker")
+  }
+
+  override func makeKeyAndOrderFront(_ sender: Any?) {
+    if isAsrWorkerProcess {
+      orderOut(nil)
+      return
+    }
+    super.makeKeyAndOrderFront(sender)
+  }
+
+  override func orderFront(_ sender: Any?) {
+    if isAsrWorkerProcess {
+      orderOut(nil)
+      return
+    }
+    super.orderFront(sender)
+  }
+
   override func performClose(_ sender: Any?) {
     orderOut(nil)
   }
@@ -11,6 +31,14 @@ class MainFlutterWindow: NSWindow {
   }
 
   override func awakeFromNib() {
+    if isAsrWorkerProcess {
+      isExcludedFromWindowsMenu = true
+      alphaValue = 0
+      super.awakeFromNib()
+      orderOut(nil)
+      return
+    }
+
     let flutterViewController = FlutterViewController()
     self.contentViewController = flutterViewController
 
@@ -33,5 +61,9 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     super.awakeFromNib()
+
+    if isAsrWorkerProcess {
+      orderOut(nil)
+    }
   }
 }

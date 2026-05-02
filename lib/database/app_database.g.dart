@@ -78,7 +78,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 6,
+      version: 8,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -101,7 +101,7 @@ class _$AppDatabase extends AppDatabase {
           'CREATE TABLE IF NOT EXISTS `settings` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY (`key`))',
         );
         await database.execute(
-          'CREATE TABLE IF NOT EXISTS `transcriptions` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `raw_text` TEXT, `created_at` TEXT NOT NULL, `duration_ms` INTEGER NOT NULL, `provider` TEXT NOT NULL, `model` TEXT NOT NULL, `provider_config` TEXT NOT NULL, PRIMARY KEY (`id`))',
+          'CREATE TABLE IF NOT EXISTS `transcriptions` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `raw_text` TEXT, `created_at` TEXT NOT NULL, `duration_ms` INTEGER NOT NULL, `llm_processing_duration_ms` INTEGER, `llm_input_tokens` INTEGER, `llm_output_tokens` INTEGER, `provider` TEXT NOT NULL, `model` TEXT NOT NULL, `provider_config` TEXT NOT NULL, PRIMARY KEY (`id`))',
         );
 
         await callback?.onCreate?.call(database, version);
@@ -192,6 +192,9 @@ class _$TranscriptionDao extends TranscriptionDao {
           'raw_text': item.rawText,
           'created_at': item.createdAt,
           'duration_ms': item.durationMs,
+          'llm_processing_duration_ms': item.llmProcessingDurationMs,
+          'llm_input_tokens': item.llmInputTokens,
+          'llm_output_tokens': item.llmOutputTokens,
           'provider': item.provider,
           'model': item.model,
           'provider_config': item.providerConfig,
@@ -217,6 +220,9 @@ class _$TranscriptionDao extends TranscriptionDao {
         rawText: row['raw_text'] as String?,
         createdAt: row['created_at'] as String,
         durationMs: row['duration_ms'] as int,
+        llmProcessingDurationMs: row['llm_processing_duration_ms'] as int?,
+        llmInputTokens: row['llm_input_tokens'] as int?,
+        llmOutputTokens: row['llm_output_tokens'] as int?,
         provider: row['provider'] as String,
         model: row['model'] as String,
         providerConfig: row['provider_config'] as String,

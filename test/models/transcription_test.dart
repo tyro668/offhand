@@ -11,6 +11,9 @@ void main() {
         text: 'Hello world',
         createdAt: sampleTime,
         duration: const Duration(seconds: 5, milliseconds: 200),
+        llmProcessingDuration: const Duration(milliseconds: 3379),
+        llmInputTokens: 2552,
+        llmOutputTokens: 211,
         provider: 'Z.ai',
         model: 'GLM-ASR-2512',
         providerConfigJson: '{"key":"value"}',
@@ -23,6 +26,12 @@ void main() {
       expect(restored.text, item.text);
       expect(restored.createdAt, item.createdAt);
       expect(restored.duration.inMilliseconds, item.duration.inMilliseconds);
+      expect(
+        restored.llmProcessingDuration?.inMilliseconds,
+        item.llmProcessingDuration?.inMilliseconds,
+      );
+      expect(restored.llmInputTokens, item.llmInputTokens);
+      expect(restored.llmOutputTokens, item.llmOutputTokens);
       expect(restored.provider, item.provider);
       expect(restored.model, item.model);
       expect(restored.providerConfigJson, item.providerConfigJson);
@@ -34,6 +43,9 @@ void main() {
         text: '测试中文文本',
         createdAt: sampleTime,
         duration: const Duration(seconds: 10),
+        llmProcessingDuration: const Duration(milliseconds: 2945),
+        llmInputTokens: 2557,
+        llmOutputTokens: 178,
         provider: 'Aliyun',
         model: 'qwen3-asr-flash',
         providerConfigJson: '{}',
@@ -46,6 +58,12 @@ void main() {
       expect(restored.text, item.text);
       expect(restored.createdAt, item.createdAt);
       expect(restored.duration.inMilliseconds, item.duration.inMilliseconds);
+      expect(
+        restored.llmProcessingDuration?.inMilliseconds,
+        item.llmProcessingDuration?.inMilliseconds,
+      );
+      expect(restored.llmInputTokens, item.llmInputTokens);
+      expect(restored.llmOutputTokens, item.llmOutputTokens);
       expect(restored.provider, item.provider);
       expect(restored.model, item.model);
       expect(restored.providerConfigJson, item.providerConfigJson);
@@ -68,6 +86,9 @@ void main() {
       expect(json, containsPair('text', 'test'));
       expect(json, containsPair('createdAt', sampleTime.toIso8601String()));
       expect(json, containsPair('duration', 3500));
+      expect(json, containsPair('llmProcessingDuration', null));
+      expect(json, containsPair('llmInputTokens', null));
+      expect(json, containsPair('llmOutputTokens', null));
       expect(json, containsPair('provider', 'test'));
       expect(json, containsPair('model', 'model'));
       expect(json, containsPair('providerConfigJson', '{}'));
@@ -90,6 +111,9 @@ void main() {
       expect(dbMap, containsPair('text', 'test'));
       expect(dbMap, containsPair('created_at', sampleTime.toIso8601String()));
       expect(dbMap, containsPair('duration_ms', 7800));
+      expect(dbMap, containsPair('llm_processing_duration_ms', null));
+      expect(dbMap, containsPair('llm_input_tokens', null));
+      expect(dbMap, containsPair('llm_output_tokens', null));
       expect(dbMap, containsPair('provider', 'test'));
       expect(dbMap, containsPair('model', 'model'));
       expect(dbMap, containsPair('provider_config', '{}'));
@@ -108,6 +132,9 @@ void main() {
 
       expect(item.model, '');
       expect(item.providerConfigJson, '{}');
+      expect(item.llmProcessingDuration, isNull);
+      expect(item.llmInputTokens, isNull);
+      expect(item.llmOutputTokens, isNull);
     });
 
     test('fromDb handles missing optional columns', () {
@@ -125,6 +152,9 @@ void main() {
 
       expect(item.model, '');
       expect(item.providerConfigJson, '{}');
+      expect(item.llmProcessingDuration, isNull);
+      expect(item.llmInputTokens, isNull);
+      expect(item.llmOutputTokens, isNull);
     });
   });
 }
