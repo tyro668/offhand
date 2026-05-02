@@ -204,28 +204,6 @@ class OverlayService {
     }
   }
 
-  static Future<bool> registerMeetingHotkey({
-    required int keyCode,
-    int modifiers = 0,
-  }) async {
-    if (!_supportsNativeOverlay) return false;
-    try {
-      final result = await _channel.invokeMethod<bool>(
-        'registerMeetingHotkey',
-        {'keyCode': keyCode, 'modifiers': modifiers},
-      );
-      return result ?? false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// 取消会议快捷键注册
-  static Future<void> unregisterMeetingHotkey() async {
-    if (!_supportsNativeOverlay) return;
-    await _channel.invokeMethod('unregisterMeetingHotkey');
-  }
-
   /// 获取开机启动状态
   static Future<bool> getLaunchAtLogin() async {
     if (!_supportsNativeOverlay) return false;

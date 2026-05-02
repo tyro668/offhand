@@ -49,12 +49,6 @@ class PromptTemplate {
       summary: '将输入翻译为自然流畅英文',
       assetPath: 'assets/prompts/template_translate_en.md',
     ),
-    BuiltinPromptTemplateDef(
-      id: 'builtin_meeting',
-      name: '会议纪要',
-      summary: '整理为结构化会议纪要要点',
-      assetPath: 'assets/prompts/template_meeting.md',
-    ),
   ];
 
   final String id;

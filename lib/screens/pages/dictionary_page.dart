@@ -11,7 +11,6 @@ import '../../l10n/app_localizations.dart';
 import '../../models/dictionary_entry.dart';
 import '../../models/dictation_term_pending_candidate.dart';
 import '../../models/transcription.dart';
-import '../../providers/meeting_provider.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
@@ -1691,9 +1690,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
     if (corrected.isEmpty) return;
 
     final recording = Provider.of<RecordingProvider?>(context, listen: false);
-    final meeting = Provider.of<MeetingProvider?>(context, listen: false);
     recording?.applySessionGlossaryOverride(entry.original, corrected);
-    meeting?.applySessionGlossaryOverride(entry.original, corrected);
   }
 
   Future<void> _handleExportCsv(

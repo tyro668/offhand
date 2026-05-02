@@ -120,10 +120,6 @@ class DashboardService {
     // ── AI 增强 token 用量 ──
     final tokenStats = await TokenStatsService.instance.getTokens();
 
-    // ── 会议 AI 增强 token 用量 ──
-    final meetingTokenStats = await TokenStatsService.instance
-        .getMeetingTokens();
-
     // ── 纠错 token 用量 ──
     final correctionStats = await CorrectionStatsService.instance.getSnapshot();
 
@@ -153,8 +149,6 @@ class DashboardService {
       modelDistribution: modelDist,
       enhancePromptTokens: tokenStats.promptTokens,
       enhanceCompletionTokens: tokenStats.completionTokens,
-      meetingEnhancePromptTokens: meetingTokenStats.promptTokens,
-      meetingEnhanceCompletionTokens: meetingTokenStats.completionTokens,
       correctionPromptTokens: correctionStats.promptTokens,
       correctionCompletionTokens: correctionStats.completionTokens,
       correctionCalls: correctionStats.calls,
@@ -167,10 +161,6 @@ class DashboardService {
       retroPromptTokens: correctionStats.retroPromptTokens,
       retroCompletionTokens: correctionStats.retroCompletionTokens,
       retroTextChanged: correctionStats.retroTextChanged,
-      glossaryPins: correctionStats.glossaryPins,
-      glossaryStrongPromotions: correctionStats.glossaryStrongPromotions,
-      glossaryOverrides: correctionStats.glossaryOverrides,
-      glossaryInjections: correctionStats.glossaryInjections,
     );
   }
 

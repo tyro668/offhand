@@ -20,8 +20,6 @@ flutter run -d macos
 flutter run -d windows
 ```
 
-Note: Development runs use a slim mode by default (local text model disabled and no llamadart dependency) to avoid native bundle download failures. GitHub Actions release builds automatically enable full local-model support.
-
 ## Build installers
 
 If you want to build on your own machine, use the commands below. If you just want to download and use it directly, check [Releases](https://github.com/tyro668/voicetype/releases).

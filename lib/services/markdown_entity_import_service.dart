@@ -134,7 +134,7 @@ class MarkdownEntityImportService {
         value.split(RegExp(r'\s+')).length > 3) {
       return false;
     }
-    if (RegExp(r'(讨论|继续|梳理|方案|会议纪要|说明|背景|需求)').hasMatch(value)) {
+    if (RegExp(r'(讨论|继续|梳理|方案|说明|背景|需求)').hasMatch(value)) {
       return false;
     }
     return _looksLikeEntity(value);

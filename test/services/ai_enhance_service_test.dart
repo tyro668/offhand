@@ -82,6 +82,21 @@ void main() {
         );
       });
 
+      test('throws AiEnhanceException for removed local text model', () async {
+        const config = AiEnhanceConfig(
+          baseUrl: '',
+          apiKey: '',
+          model: 'model.gguf',
+          prompt: 'Fix',
+          agentName: 'Agent',
+        );
+
+        expect(
+          () => AiEnhanceService(config).enhance('text'),
+          throwsA(isA<AiEnhanceException>()),
+        );
+      });
+
       test('throws AiEnhanceException for ENC: API key', () async {
         const config = AiEnhanceConfig(
           baseUrl: 'https://example.com/v1',

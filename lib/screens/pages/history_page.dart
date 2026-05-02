@@ -9,7 +9,6 @@ import '../../models/dictation_term_pending_candidate.dart';
 import '../../models/entity_alias.dart';
 import '../../models/entity_memory.dart';
 import '../../models/transcription.dart';
-import '../../providers/meeting_provider.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/dictation_term_memory_service.dart';
@@ -203,7 +202,6 @@ class _HistoryPageState extends State<HistoryPage> {
     RecordingProvider recording,
     SettingsProvider settings,
   ) async {
-    final meeting = context.read<MeetingProvider?>();
     final learnedTerms = <String>{};
     final learnedEntities = <String>{};
     var skippedItems = 0;
@@ -236,7 +234,6 @@ class _HistoryPageState extends State<HistoryPage> {
         final corrected = (entry.corrected ?? '').trim();
         if (corrected.isEmpty) continue;
         recording.applySessionGlossaryOverride(entry.original, corrected);
-        meeting?.applySessionGlossaryOverride(entry.original, corrected);
         learnedTerms.add('${entry.original} -> $corrected');
       }
 
@@ -248,11 +245,6 @@ class _HistoryPageState extends State<HistoryPage> {
       );
       for (final entity in entityResults) {
         recording.activateSessionEntity(
-          entityId: entity.id,
-          canonicalName: entity.canonicalName,
-          alias: entity.canonicalName,
-        );
-        meeting?.activateSessionEntity(
           entityId: entity.id,
           canonicalName: entity.canonicalName,
           alias: entity.canonicalName,
@@ -745,7 +737,6 @@ class _HistoryPageState extends State<HistoryPage> {
       return;
     }
 
-    final meeting = context.read<MeetingProvider?>();
     final learnedTerms = <String>[];
     for (final candidate in candidates) {
       final entry = await settings.upsertDictionaryCorrectionEntry(
@@ -756,7 +747,6 @@ class _HistoryPageState extends State<HistoryPage> {
       final corrected = (entry.corrected ?? '').trim();
       if (corrected.isNotEmpty) {
         recording.applySessionGlossaryOverride(entry.original, corrected);
-        meeting?.applySessionGlossaryOverride(entry.original, corrected);
         learnedTerms.add('${entry.original} -> $corrected');
       }
     }
@@ -768,11 +758,6 @@ class _HistoryPageState extends State<HistoryPage> {
     );
     for (final entity in learnedEntities) {
       recording.activateSessionEntity(
-        entityId: entity.id,
-        canonicalName: entity.canonicalName,
-        alias: entity.canonicalName,
-      );
-      meeting?.activateSessionEntity(
         entityId: entity.id,
         canonicalName: entity.canonicalName,
         alias: entity.canonicalName,

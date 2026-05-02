@@ -3,9 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app.dart';
 import 'database/app_database.dart';
+import 'services/local_asr_worker_main.dart';
 import 'services/overlay_service.dart';
 
-void main() async {
+void main(List<String> args) async {
+  if (args.contains('--asr-worker')) {
+    await LocalAsrWorkerMain.run();
+    return;
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     sqfliteFfiInit();

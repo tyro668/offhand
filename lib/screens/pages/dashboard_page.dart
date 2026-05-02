@@ -1,11 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../models/correction_change_log.dart';
 import '../../models/dashboard_stats.dart';
-import '../../services/correction_change_log_service.dart';
 import '../../services/dashboard_service.dart';
 import '../../widgets/modern_ui.dart';
 
@@ -18,8 +18,6 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   DashboardStats _stats = DashboardStats.empty;
-  List<CorrectionChangeLog> _correctionLogs = const [];
-  bool _correctionLogsExpanded = false;
   bool _loading = true;
   TrendGranularity _granularity = TrendGranularity.day;
   int _periodTab = 0;
@@ -33,16 +31,12 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _loadStats({bool showLoading = true}) async {
     if (showLoading) setState(() => _loading = true);
     try {
-      final results = await Future.wait([
-        DashboardService.instance.computeStats(granularity: _granularity),
-        CorrectionChangeLogService.instance.getRecent(limit: 20),
-      ]);
-      final stats = results[0] as DashboardStats;
-      final correctionLogs = results[1] as List<CorrectionChangeLog>;
+      final stats = await DashboardService.instance.computeStats(
+        granularity: _granularity,
+      );
       if (mounted) {
         setState(() {
           _stats = stats;
-          _correctionLogs = correctionLogs;
           if (showLoading) _loading = false;
         });
       }
@@ -82,10 +76,8 @@ class _DashboardPageState extends State<DashboardPage> {
           ModernEmptyState(
             icon: Icons.bar_chart_rounded,
             title: _l10n.noDataYet,
-            description: '开始一次录音或会议后，这里会逐步形成你的使用概览与趋势数据。',
+            description: '开始一次录音后，这里会逐步形成你的使用概览与趋势数据。',
           ),
-          const SizedBox(height: 14),
-          _buildCorrectionChangeLogsSection(),
         ],
       ),
     );
@@ -107,11 +99,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 12),
           _buildCorrectionEfficiencySection(),
           const SizedBox(height: 12),
-          _buildCorrectionChangeLogsSection(),
-          const SizedBox(height: 12),
           _buildRetrospectiveSection(),
-          const SizedBox(height: 12),
-          _buildGlossarySection(),
           const SizedBox(height: 12),
           _buildTrendSection(),
           const SizedBox(height: 12),
@@ -841,21 +829,32 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildTokenSection() {
-    final hasEnhance = _stats.enhanceTotalTokens > 0;
-    final hasMeeting = _stats.meetingEnhanceTotalTokens > 0;
-    final hasCorrection = _stats.correctionTotalTokens > 0;
-    final hasRetro = _stats.retroTotalTokens > 0;
-    if (!hasEnhance && !hasMeeting && !hasCorrection && !hasRetro) {
+    final series = [
+      if (_stats.enhanceTotalTokens > 0)
+        _TokenSeries(
+          label: _l10n.enhanceTokenUsage,
+          input: _stats.enhancePromptTokens,
+          output: _stats.enhanceCompletionTokens,
+          color: const Color(0xFF2F6CE5),
+        ),
+      if (_stats.correctionTotalTokens > 0)
+        _TokenSeries(
+          label: _l10n.correctionTokenUsage,
+          input: _stats.correctionPromptTokens,
+          output: _stats.correctionCompletionTokens,
+          color: Colors.orange.shade500,
+        ),
+      if (_stats.retroTotalTokens > 0)
+        _TokenSeries(
+          label: _l10n.retroTokenUsage,
+          input: _stats.retroPromptTokens,
+          output: _stats.retroCompletionTokens,
+          color: Colors.teal.shade500,
+        ),
+    ];
+    if (series.isEmpty) {
       return const SizedBox.shrink();
     }
-
-    final categoryCount = [
-      hasEnhance,
-      hasMeeting,
-      hasCorrection,
-      hasRetro,
-    ].where((v) => v).length;
-    final showAll = categoryCount >= 2;
 
     return _Card(
       cs: _cs,
@@ -876,9 +875,7 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  showAll
-                      ? '${_l10n.allTokenUsage} ${_formatNumber(_stats.allTotalTokens)}'
-                      : _l10n.allTokenUsage,
+                  '${_l10n.allTokenUsage} ${_formatNumber(_stats.allTotalTokens)}',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -888,47 +885,148 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ],
           ),
-          if (showAll) ...[
-            const SizedBox(height: 10),
-            Divider(
-              color: _cs.outlineVariant.withValues(alpha: 0.5),
-              height: 1,
+          const SizedBox(height: 12),
+          SizedBox(height: 210, child: _buildTokenLogChart(series)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 16,
+            runSpacing: 6,
+            children: [
+              for (final item in series)
+                _TokenLabel(
+                  color: item.color,
+                  label: item.label,
+                  value: _formatNumber(item.total),
+                  cs: _cs,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTokenLogChart(List<_TokenSeries> series) {
+    final maxValue = series.fold<int>(
+      0,
+      (max, item) => math.max(max, math.max(item.input, item.output)),
+    );
+    final maxY = math.max(1.0, _logTokenValue(maxValue) * 1.32);
+    final interval = maxY / 3;
+    final rodWidth = series.length >= 3 ? 10.0 : 16.0;
+    final barsSpace = series.length >= 3 ? 34.0 : 28.0;
+
+    BarChartGroupData groupFor({
+      required int x,
+      required int Function(_TokenSeries item) valueOf,
+    }) {
+      return BarChartGroupData(
+        x: x,
+        barsSpace: barsSpace,
+        showingTooltipIndicators: List.generate(series.length, (i) => i),
+        barRods: [
+          for (final item in series)
+            BarChartRodData(
+              toY: _logTokenValue(valueOf(item)),
+              width: rodWidth,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(6),
+              ),
+              color: item.color,
             ),
-            const SizedBox(height: 10),
-          ],
-          // Token blocks
-          if (hasEnhance)
-            _buildTokenBlock(
-              title: _l10n.enhanceTokenUsage,
-              input: _stats.enhancePromptTokens,
-              output: _stats.enhanceCompletionTokens,
-              total: _stats.enhanceTotalTokens,
+        ],
+      );
+    }
+
+    return BarChart(
+      BarChartData(
+        minY: 0,
+        maxY: maxY,
+        alignment: BarChartAlignment.spaceAround,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: interval,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: _cs.outlineVariant.withValues(alpha: 0.34),
+            strokeWidth: 1,
+            dashArray: [4, 4],
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 42,
+              interval: interval,
+              getTitlesWidget: (value, meta) {
+                final tokenValue = _tokenValueFromLog(value);
+                return SideTitleWidget(
+                  meta: meta,
+                  child: Text(
+                    _formatCompactNumber(tokenValue),
+                    style: TextStyle(fontSize: 10, color: _cs.onSurfaceVariant),
+                  ),
+                );
+              },
             ),
-          if (hasEnhance && hasMeeting) const SizedBox(height: 12),
-          if (hasMeeting)
-            _buildTokenBlock(
-              title: _l10n.meetingTokenUsage,
-              input: _stats.meetingEnhancePromptTokens,
-              output: _stats.meetingEnhanceCompletionTokens,
-              total: _stats.meetingEnhanceTotalTokens,
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              getTitlesWidget: (value, meta) {
+                final label = value.round() == 0
+                    ? _l10n.enhanceInputTokens
+                    : _l10n.enhanceOutputTokens;
+                return SideTitleWidget(
+                  meta: meta,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: _cs.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              },
             ),
-          if ((hasEnhance || hasMeeting) && hasCorrection)
-            const SizedBox(height: 12),
-          if (hasCorrection)
-            _buildTokenBlock(
-              title: _l10n.correctionTokenUsage,
-              input: _stats.correctionPromptTokens,
-              output: _stats.correctionCompletionTokens,
-              total: _stats.correctionTotalTokens,
-            ),
-          if (hasCorrection && hasRetro) const SizedBox(height: 12),
-          if (hasRetro)
-            _buildTokenBlock(
-              title: _l10n.retroTokenUsage,
-              input: _stats.retroPromptTokens,
-              output: _stats.retroCompletionTokens,
-              total: _stats.retroTotalTokens,
-            ),
+          ),
+        ),
+        barTouchData: BarTouchData(
+          enabled: false,
+          touchTooltipData: BarTouchTooltipData(
+            fitInsideHorizontally: true,
+            fitInsideVertically: true,
+            tooltipPadding: EdgeInsets.zero,
+            tooltipMargin: 18,
+            tooltipRoundedRadius: 0,
+            getTooltipColor: (_) => Colors.transparent,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final item = series[rodIndex];
+              final value = group.x == 0 ? item.input : item.output;
+              return BarTooltipItem(
+                _formatNumber(value),
+                TextStyle(
+                  color: _cs.onSurface,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              );
+            },
+          ),
+        ),
+        barGroups: [
+          groupFor(x: 0, valueOf: (item) => item.input),
+          groupFor(x: 1, valueOf: (item) => item.output),
         ],
       ),
     );
@@ -994,153 +1092,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildCorrectionChangeLogsSection() {
-    return _Card(
-      cs: _cs,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildSectionHeading(
-                  _l10n.correctionChangesTitle,
-                  Icons.compare_arrows_rounded,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _correctionLogsExpanded = !_correctionLogsExpanded;
-                  });
-                },
-                icon: Icon(
-                  _correctionLogsExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  size: 18,
-                ),
-                label: Text(
-                  _correctionLogsExpanded
-                      ? _l10n.correctionChangesCollapse
-                      : _l10n.correctionChangesExpand,
-                ),
-              ),
-            ],
-          ),
-          if (_correctionLogsExpanded) ...[
-            const SizedBox(height: 10),
-            if (_correctionLogs.isEmpty)
-              Text(
-                _l10n.correctionChangesEmpty,
-                style: TextStyle(fontSize: 12, color: _cs.onSurfaceVariant),
-              )
-            else
-              ..._correctionLogs.asMap().entries.map((entry) {
-                final index = entry.key;
-                final log = entry.value;
-                final pairText = log.terms
-                    .map(
-                      (e) =>
-                          '${e.observed.isEmpty ? e.original : e.observed}→${e.corrected}',
-                    )
-                    .join('、');
-                final sourceLabel = log.source == 'retrospective'
-                    ? _l10n.correctionSourceRetrospective
-                    : _l10n.correctionSourceRealtime;
-
-                return Container(
-                  margin: EdgeInsets.only(
-                    bottom: index == _correctionLogs.length - 1 ? 0 : 12,
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _cs.surfaceContainerHighest.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _cs.outlineVariant.withValues(alpha: 0.45),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            DateFormat('MM-dd HH:mm:ss').format(log.createdAt),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _cs.onSurfaceVariant,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(99),
-                              color: _cs.primary.withValues(alpha: 0.12),
-                            ),
-                            child: Text(
-                              sourceLabel,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: _cs.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (pairText.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_l10n.correctionChangedTerms}: $pairText',
-                          style: TextStyle(fontSize: 12, color: _cs.onSurface),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Text(
-                        _l10n.correctionBeforeText,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _cs.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        log.inputText,
-                        style: TextStyle(fontSize: 12, color: _cs.onSurface),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _l10n.correctionAfterText,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _cs.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        log.outputText,
-                        style: TextStyle(fontSize: 12, color: _cs.onSurface),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-          ],
-        ],
-      ),
-    );
-  }
-
   // ─────────────── Retrospective Section ───────────────
 
   Widget _buildRetrospectiveSection() {
@@ -1187,128 +1138,14 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ─────────────── Glossary Section ───────────────
-
-  Widget _buildGlossarySection() {
-    final total =
-        _stats.glossaryPins +
-        _stats.glossaryStrongPromotions +
-        _stats.glossaryOverrides +
-        _stats.glossaryInjections;
-    if (total <= 0) return const SizedBox.shrink();
-
-    return _Card(
-      cs: _cs,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeading(
-            _l10n.glossarySectionTitle,
-            Icons.menu_book_outlined,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 20,
-            runSpacing: 10,
-            children: [
-              _buildEfficiencyItem(
-                _l10n.glossaryPins,
-                _formatNumber(_stats.glossaryPins),
-              ),
-              _buildEfficiencyItem(
-                _l10n.glossaryStrongPromotions,
-                _formatNumber(_stats.glossaryStrongPromotions),
-              ),
-              _buildEfficiencyItem(
-                _l10n.glossaryOverrides,
-                _formatNumber(_stats.glossaryOverrides),
-              ),
-              _buildEfficiencyItem(
-                _l10n.glossaryInjections,
-                _formatNumber(_stats.glossaryInjections),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  double _logTokenValue(int value) {
+    if (value <= 0) return 0;
+    return math.log(value + 1) / math.ln10;
   }
 
-  Widget _buildTokenBlock({
-    required String title,
-    required int input,
-    required int output,
-    required int total,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Title + total on the right
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _cs.onSurface,
-              ),
-            ),
-            Text(
-              '${_l10n.enhanceTotalTokens}: ${_formatNumber(total)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: _cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        // Progress bar
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox(
-            height: 8,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: input,
-                  child: Container(color: Colors.orange.shade400),
-                ),
-                Expanded(
-                  flex: output > 0 ? output : 1,
-                  child: Container(color: Colors.teal.shade400),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Labels
-        Wrap(
-          spacing: 16,
-          runSpacing: 6,
-          children: [
-            _TokenLabel(
-              color: Colors.orange.shade400,
-              label: _l10n.enhanceInputTokens,
-              value: _formatNumber(input),
-              cs: _cs,
-            ),
-            _TokenLabel(
-              color: Colors.teal.shade400,
-              label: _l10n.enhanceOutputTokens,
-              value: _formatNumber(output),
-              cs: _cs,
-            ),
-          ],
-        ),
-      ],
-    );
+  int _tokenValueFromLog(double value) {
+    if (value <= 0) return 0;
+    return math.max(0, math.pow(10, value).round() - 1);
   }
 
   List<Color> get _distributionColors => [
@@ -1327,6 +1164,13 @@ class _DashboardPageState extends State<DashboardPage> {
   String _formatNumber(int n) {
     if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}w';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+
+  String _formatCompactNumber(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}m';
+    if (n >= 10000) return '${(n / 10000).toStringAsFixed(1)}w';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(0)}k';
     return '$n';
   }
 
@@ -1432,6 +1276,22 @@ class _Card extends StatelessWidget {
       child: child,
     );
   }
+}
+
+class _TokenSeries {
+  final String label;
+  final int input;
+  final int output;
+  final Color color;
+
+  const _TokenSeries({
+    required this.label,
+    required this.input,
+    required this.output,
+    required this.color,
+  });
+
+  int get total => input + output;
 }
 
 class _PeriodStat extends StatelessWidget {

@@ -51,7 +51,7 @@ void main() {
       final bundle = service.buildForStt(
         currentText: '接龙和金雨希马上出来了',
         historyTexts: const ['刚刚张三丰已经到了'],
-        contextTexts: const ['会议参与人包括张三丰和李四娃'],
+        contextTexts: const ['项目参与人包括张三丰和李四娃'],
         memories: [zhang, li],
         aliases: aliases,
         relations: relations,

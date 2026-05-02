@@ -66,10 +66,6 @@ class DashboardStats {
   final int enhancePromptTokens;
   final int enhanceCompletionTokens;
 
-  // ── 会议 AI 增强 token 用量 ──
-  final int meetingEnhancePromptTokens;
-  final int meetingEnhanceCompletionTokens;
-
   // ── 纠错 token 用量 ──
   final int correctionPromptTokens;
   final int correctionCompletionTokens;
@@ -87,12 +83,6 @@ class DashboardStats {
   final int retroPromptTokens;
   final int retroCompletionTokens;
   final int retroTextChanged;
-
-  // ── SessionGlossary 术语锚定 ──
-  final int glossaryPins;
-  final int glossaryStrongPromotions;
-  final int glossaryOverrides;
-  final int glossaryInjections;
 
   const DashboardStats({
     required this.totalCount,
@@ -120,8 +110,6 @@ class DashboardStats {
     required this.modelDistribution,
     required this.enhancePromptTokens,
     required this.enhanceCompletionTokens,
-    this.meetingEnhancePromptTokens = 0,
-    this.meetingEnhanceCompletionTokens = 0,
     this.correctionPromptTokens = 0,
     this.correctionCompletionTokens = 0,
     this.correctionCalls = 0,
@@ -134,10 +122,6 @@ class DashboardStats {
     this.retroPromptTokens = 0,
     this.retroCompletionTokens = 0,
     this.retroTextChanged = 0,
-    this.glossaryPins = 0,
-    this.glossaryStrongPromotions = 0,
-    this.glossaryOverrides = 0,
-    this.glossaryInjections = 0,
   });
 
   /// 空状态。
@@ -165,8 +149,6 @@ class DashboardStats {
     modelDistribution: {},
     enhancePromptTokens: 0,
     enhanceCompletionTokens: 0,
-    meetingEnhancePromptTokens: 0,
-    meetingEnhanceCompletionTokens: 0,
     correctionPromptTokens: 0,
     correctionCompletionTokens: 0,
     correctionCalls: 0,
@@ -179,18 +161,11 @@ class DashboardStats {
     retroPromptTokens: 0,
     retroCompletionTokens: 0,
     retroTextChanged: 0,
-    glossaryPins: 0,
-    glossaryStrongPromotions: 0,
-    glossaryOverrides: 0,
-    glossaryInjections: 0,
   );
 
   bool get isEmpty => totalCount == 0;
 
   int get enhanceTotalTokens => enhancePromptTokens + enhanceCompletionTokens;
-
-  int get meetingEnhanceTotalTokens =>
-      meetingEnhancePromptTokens + meetingEnhanceCompletionTokens;
 
   int get correctionTotalTokens =>
       correctionPromptTokens + correctionCompletionTokens;
@@ -205,13 +180,9 @@ class DashboardStats {
 
   /// 所有来源的总 token 数
   int get allPromptTokens =>
-      enhancePromptTokens +
-      meetingEnhancePromptTokens +
-      correctionPromptTokens +
-      retroPromptTokens;
+      enhancePromptTokens + correctionPromptTokens + retroPromptTokens;
   int get allCompletionTokens =>
       enhanceCompletionTokens +
-      meetingEnhanceCompletionTokens +
       correctionCompletionTokens +
       retroCompletionTokens;
   int get allTotalTokens => allPromptTokens + allCompletionTokens;

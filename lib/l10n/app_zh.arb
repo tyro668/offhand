@@ -13,7 +13,6 @@
   "historyContextCount": "上下文档案",
   "logs": "日志",
   "about": "关于",
-
   "activationMode": "激活模式",
   "tapToTalk": "点击模式",
   "tapToTalkSubtitle": "点击开始，点击停止",
@@ -21,15 +20,11 @@
   "pushToTalk": "按住模式",
   "pushToTalkSubtitle": "按住录音，松开停止",
   "pushToTalkDescription": "按住快捷键录音，松开停止录音",
-
   "dictationHotkey": "听写快捷键",
   "dictationHotkeyDescription": "配置用于开始和停止语音听写的按键。",
-  "meetingHotkey": "会议录音快捷键",
-  "meetingHotkeyDescription": "配置用于开始和结束会议录音的组合键，默认是 Ctrl+M。按一次开始录音，再按一次结束。",
   "pressKeyToSet": "按下要设置为快捷键的按键",
   "clickToChangeHotkey": "点击更改快捷键",
   "resetToDefault": "恢复默认",
-
   "permissions": "权限设置",
   "permissionsDescription": "管理系统权限以获取最佳性能功能。",
   "microphonePermission": "麦克风权限",
@@ -44,7 +39,6 @@
   "openSoundInput": "打开声音输入",
   "openMicrophonePrivacy": "打开麦克风隐私",
   "openAccessibilityPrivacy": "打开辅助功能隐私",
-
   "microphoneInput": "麦克风输入",
   "microphoneInputDescription": "选择用于听写的麦克风。启用「优先使用内置麦克风」可防止使用蓝牙耳机时音频中断。",
   "preferBuiltInMicrophone": "优先使用内置麦克风",
@@ -53,19 +47,15 @@
   "unknownDevice": "未知设备",
   "noMicrophoneDetected": "未检测到麦克风",
   "using": "正在使用",
-
   "minRecordingDuration": "最短录音时长",
   "minRecordingDurationDescription": "录音时长低于此值时将自动忽略，避免误触产生无效输入。",
   "ignoreShortRecordings": "忽略短于此时长的录音",
   "seconds": "秒",
-
   "language": "语言",
   "languageDescription": "选择您偏好的界面语言。",
   "interfaceLanguage": "界面语言",
   "english": "English",
   "simplifiedChinese": "简体中文",
-
-  "logs": "日志",
   "logsDescription": "查看和管理应用程序日志文件。",
   "logFile": "日志文件",
   "noLogFile": "无日志文件",
@@ -74,7 +64,6 @@
   "logPathCopied": "日志路径已复制到剪贴板",
   "tip": "提示",
   "logsTip": "日志文件包含应用程序的运行记录，可用于排查问题。如果应用出现异常，可以将此日志文件提供给开发者进行分析。",
-
   "recordingStorage": "录音文件存储",
   "recordingStorageDescription": "查看和管理录音音频文件的存储位置。",
   "recordingFiles": "录音文件",
@@ -84,7 +73,6 @@
   "clearRecordingFiles": "清理文件",
   "clearRecordingFilesConfirm": "确定要删除所有录音文件吗？此操作不可撤销。",
   "confirm": "确定",
-
   "addModel": "添加模型",
   "addVoiceModel": "添加语音模型",
   "addTextModel": "添加文本模型",
@@ -128,10 +116,8 @@
   "noModelsAdded": "暂未添加模型",
   "addVoiceModelHint": "点击下方按钮添加一个语音识别模型",
   "addTextModelHint": "点击下方按钮添加一个大语言模型",
-
   "enableTextEnhancement": "启用文本增强",
   "textEnhancementDescription": "使用 AI 增强和修正转录的文本。",
-
   "prompt": "提示词",
   "promptDescription": "自定义 AI 文本增强的行为。",
   "defaultPrompt": "默认提示词",
@@ -140,7 +126,6 @@
   "agentName": "助手名称",
   "enterAgentName": "输入助手名称",
   "current": "当前",
-  "custom": "自定义",
   "test": "测试",
   "currentSystemPrompt": "当前系统智能体提示词",
   "customPromptTitle": "自定义智能体提示词",
@@ -159,7 +144,6 @@
   "runTest": "运行测试",
   "outputResult": "输出结果",
   "outputWillAppearHere": "输出结果将显示在这里",
-
   "historySection": "转写档案",
   "noHistory": "暂无转写档案",
   "historyHint": "使用快捷键开始录音，增强后的转写结果将归档在这里",
@@ -172,17 +156,14 @@
   "copiedToClipboard": "已复制到剪贴板",
   "deleteHistoryItem": "删除",
   "searchHistory": "搜索转写档案...",
-
   "aboutSection": "关于",
   "appDescription": "释手是一款语音输入工具，支持多种云端大模型和基于 sherpa-onnx 的本地 ASR 模型，让所想即所写。",
   "appSlogan": "言之所至，释手而书。",
   "version": "版本",
   "checkForUpdates": "检查更新",
   "openSourceLicenses": "开源许可证",
-
   "required": "必填",
   "optional": "选填",
-
   "networkSettings": "网络设置",
   "networkSettingsDescription": "配置应用的网络代理模式。",
   "systemSettings": "系统设置",
@@ -196,7 +177,6 @@
   "systemProxySubtitle": "请求遵循系统网络代理配置。",
   "noProxy": "不使用代理",
   "noProxySubtitle": "所有请求直连，不走任何代理。",
-
   "inputMonitoringRequired": "需要输入监控权限",
   "inputMonitoringDescription": "Fn 全局快捷键需要在「系统设置 > 隐私与安全性 > 输入监控」中勾选 释手。",
   "accessibilityRequired": "需要辅助功能权限",
@@ -204,20 +184,17 @@
   "later": "稍后",
   "openSettings": "打开设置",
   "pleaseConfigureSttModel": "请先配置语音转换模型",
-
   "overlayStarting": "麦克风启动中",
   "overlayRecording": "录音中",
   "overlayTranscribing": "语音转换中",
   "overlayEnhancing": "文字整理中",
   "overlayTranscribeFailed": "语音转录失败",
-
   "theme": "外观",
   "themeDescription": "选择应用的外观主题。",
   "themeMode": "外观模式",
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
   "themeDark": "深色",
-
   "localModelIdleUnloadTitle": "本地模型空闲自动释放",
   "localModelIdleUnloadDescription": "长时间不使用时自动卸载模型，降低内存占用",
   "localModelIdleUnloadTiming": "释放时机",
@@ -246,7 +223,6 @@
       }
     }
   },
-
   "dashboard": "仪表盘",
   "totalTranscriptions": "总转录次数",
   "totalRecordingTime": "总录音时长",
@@ -299,12 +275,10 @@
       }
     }
   },
-
   "enhanceTokenUsage": "语音输入 Token 用量",
   "enhanceInputTokens": "输入 Token",
   "enhanceOutputTokens": "输出 Token",
   "enhanceTotalTokens": "总 Token",
-  "meetingTokenUsage": "会议记录 Token 用量",
   "correctionTokenUsage": "纠错 Token 用量",
   "correctionRecallEfficiency": "纠错召回效率",
   "correctionTotalCalls": "纠错调用次数",
@@ -322,42 +296,34 @@
   "correctionSourceRealtime": "实时",
   "correctionSourceRetrospective": "终态回溯",
   "allTokenUsage": "全部 Token 汇总",
-
   "retroTokenUsage": "终态回溯 Token 用量",
   "retroSectionTitle": "终态回溯统计",
   "retroTotalCalls": "回溯次数",
   "retroLlmCalls": "LLM 调用次数",
   "retroTextChangedCount": "文本变更次数",
   "retroTextChangedRate": "文本变更率",
-
   "glossarySectionTitle": "术语锚定统计",
   "glossaryPins": "新增锚定",
   "glossaryStrongPromotions": "强锚定升级",
   "glossaryOverrides": "手动覆盖",
   "glossaryInjections": "注入 #R 次数",
-
   "showInDock": "在 Dock 中显示",
   "showInDockDescription": "控制应用程序图标是否显示在 Dock 上。",
   "showInDockFailed": "修改 Dock 显示状态失败",
-
   "trayOpen": "打开",
   "trayQuit": "退出",
-
   "recordingPathCopied": "录音路径已复制到剪贴板",
   "openFolderFailed": "打开文件夹失败",
   "cleanupFailed": "清理失败",
   "resetHotkeyDefault": "恢复默认（{key}）",
-
   "vadTitle": "智能静音检测",
   "vadDescription": "录音时自动检测沉默，超过设定时间后自动停止录音并开始转录。",
   "vadEnable": "启用智能静音检测",
   "vadSilenceThreshold": "静音阈值",
   "vadSilenceDuration": "静音等待时长",
-
   "sceneModeTitle": "场景模式",
   "sceneModeDescription": "选择当前场景，AI 将根据场景调整文本规整的风格和格式。",
   "sceneModeLabel": "当前场景",
-
   "promptTemplates": "模板列表",
   "promptCreateTemplate": "创建模板",
   "promptTemplateName": "模板名称",
@@ -374,11 +340,8 @@
   "promptBuiltinColloquialSummary": "轻度纠错并保留自然口语风格",
   "promptBuiltinTranslateEnName": "翻译为英文",
   "promptBuiltinTranslateEnSummary": "将输入翻译为自然流畅英文",
-  "promptBuiltinMeetingName": "会议纪要",
-  "promptBuiltinMeetingSummary": "整理为结构化会议纪要要点",
   "promptSelectHint": "从左侧选择一个模板查看详情",
   "promptPreview": "预览",
-
   "dictionarySettings": "记忆库",
   "dictionaryDescription": "设置词语纠正和保留规则，帮助 AI 更准确地输出专业术语和固定用语。",
   "dictionaryAdd": "添加规则",
@@ -407,16 +370,26 @@
   "dictionaryPageIndicator": "第 {current} / {total} 页",
   "@dictionaryPageIndicator": {
     "placeholders": {
-      "current": {"type": "int"},
-      "total": {"type": "int"}
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dictionaryPageSummary": "显示 {from} - {to} / 共 {total}",
   "@dictionaryPageSummary": {
     "placeholders": {
-      "from": {"type": "int"},
-      "to": {"type": "int"},
-      "total": {"type": "int"}
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dictionaryEmpty": "词典为空",
@@ -426,28 +399,39 @@
   "dictionaryExportSuccess": "CSV 已导出到：{path}",
   "@dictionaryExportSuccess": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "dictionaryExportWithExampleSuccess": "CSV 已导出到：{path}\\n示例文件：{examplePath}\\n用于修改此文件，请按示例文件格式导入。",
   "@dictionaryExportWithExampleSuccess": {
     "placeholders": {
-      "path": {"type": "String"},
-      "examplePath": {"type": "String"}
+      "path": {
+        "type": "String"
+      },
+      "examplePath": {
+        "type": "String"
+      }
     }
   },
   "dictionaryExportFailed": "导出 CSV 失败",
   "dictionaryImportSuccess": "导入完成：新增 {imported} 条，跳过 {skipped} 条（共 {total} 行）",
   "@dictionaryImportSuccess": {
     "placeholders": {
-      "imported": {"type": "int"},
-      "skipped": {"type": "int"},
-      "total": {"type": "int"}
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dictionaryImportInvalidFormat": "CSV 格式无效：缺少 pinyinPattern 列",
   "dictionaryImportFailed": "导入 CSV 失败",
-
   "correctionEnabled": "智能纠错",
   "correctionDescription": "基于拼音匹配自动纠正同音字，仅在词典非空时生效",
   "retrospectiveCorrectionEnabled": "终态回溯复核",
@@ -472,13 +456,17 @@
   "contextCount": "共 {count} 条",
   "@contextCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "contextSelectedCount": "已选 {count} 条",
   "@contextSelectedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "contextSelectAll": "全选",
@@ -486,235 +474,120 @@
   "contextDeleteSelectedSuccess": "已删除 {count} 条上下文",
   "@contextDeleteSelectedSuccess": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "contextContentEmpty": "内容为空",
   "contextAliasLabel": "别名/误识别: {value}",
   "@contextAliasLabel": {
     "placeholders": {
-      "value": {"type": "String"}
+      "value": {
+        "type": "String"
+      }
     }
   },
   "contextSourceLabel": "来源: {value}",
   "@contextSourceLabel": {
     "placeholders": {
-      "value": {"type": "String"}
+      "value": {
+        "type": "String"
+      }
     }
   },
   "contextDeleteSuccess": "已删除 {term}",
   "@contextDeleteSuccess": {
     "placeholders": {
-      "term": {"type": "String"}
+      "term": {
+        "type": "String"
+      }
     }
   },
   "contextPromoteSuccess": "已将 {term} 提升到词典",
   "@contextPromoteSuccess": {
     "placeholders": {
-      "term": {"type": "String"}
+      "term": {
+        "type": "String"
+      }
     }
   },
   "contextImportSuccess": "导入完成：上下文 {contextCount} 条，纠错 {correctionCount} 条，保留 {preserveCount} 条，参考 {referenceCount} 条",
   "@contextImportSuccess": {
     "placeholders": {
-      "contextCount": {"type": "int"},
-      "correctionCount": {"type": "int"},
-      "preserveCount": {"type": "int"},
-      "referenceCount": {"type": "int"}
+      "contextCount": {
+        "type": "int"
+      },
+      "correctionCount": {
+        "type": "int"
+      },
+      "preserveCount": {
+        "type": "int"
+      },
+      "referenceCount": {
+        "type": "int"
+      }
     }
   },
   "contextImportPreviewSummary": "共 {fileCount} 个文件，上下文 {contextCount} 条，纠错 {correctionCount} 条，保留 {preserveCount} 条，参考 {referenceCount} 条，跳过 {skippedCount} 条",
   "@contextImportPreviewSummary": {
     "placeholders": {
-      "fileCount": {"type": "int"},
-      "contextCount": {"type": "int"},
-      "correctionCount": {"type": "int"},
-      "preserveCount": {"type": "int"},
-      "referenceCount": {"type": "int"},
-      "skippedCount": {"type": "int"}
+      "fileCount": {
+        "type": "int"
+      },
+      "contextCount": {
+        "type": "int"
+      },
+      "correctionCount": {
+        "type": "int"
+      },
+      "preserveCount": {
+        "type": "int"
+      },
+      "referenceCount": {
+        "type": "int"
+      },
+      "skippedCount": {
+        "type": "int"
+      }
     }
   },
   "contextImportPreviewItemSummary": "上下文 {contextCount} 条，纠错 {correctionCount} 条，保留 {preserveCount} 条，参考 {referenceCount} 条，跳过 {skippedCount} 条",
   "@contextImportPreviewItemSummary": {
     "placeholders": {
-      "contextCount": {"type": "int"},
-      "correctionCount": {"type": "int"},
-      "preserveCount": {"type": "int"},
-      "referenceCount": {"type": "int"},
-      "skippedCount": {"type": "int"}
+      "contextCount": {
+        "type": "int"
+      },
+      "correctionCount": {
+        "type": "int"
+      },
+      "preserveCount": {
+        "type": "int"
+      },
+      "referenceCount": {
+        "type": "int"
+      },
+      "skippedCount": {
+        "type": "int"
+      }
     }
   },
   "pinyinPreview": "拼音",
   "pinyinOverride": "拼音规则（选填）",
   "pinyinOverrideHint": "如 fan ruan，支持仅拼音匹配；空格分隔多音节",
   "pinyinReset": "恢复自动拼音",
-
-  "meetingMinutes": "会议纪要",
-  "meetingNew": "新建会议",
-  "meetingRecording": "录制中",
-  "meetingPaused": "已暂停",
-  "meetingCompleted": "已完成",
-  "meetingEmpty": "暂无会议纪要",
-  "meetingEmptyHint": "点击上方按钮开始新的会议录制",
-  "meetingStarting": "正在启动会议...",
-  "meetingTitleHint": "输入会议标题...",
-  "meetingPause": "暂停",
-  "meetingResume": "继续",
-  "meetingStop": "结束",
-  "meetingListening": "正在录音...",
-  "meetingListeningHint": "语音会自动分段处理并转为文字",
-  "meetingTranscribing": "语音转文字中",
-  "meetingEnhancing": "文字整理中",
-  "meetingWaitingProcess": "等待处理",
-  "meetingPending": "等待",
-  "meetingDone": "完成",
-  "meetingError": "失败",
-  "meetingSegmentError": "处理失败",
-  "meetingRetry": "重试",
-  "meetingNoContent": "无转写内容",
-  "meetingProcessing": "正在处理剩余分段...",
-  "meetingSegments": "分段数",
-  "meetingLongPressToEnd": "长按按钮结束会议",
-  "meetingEndingConfirm": "正在结束会议...",
-  "meetingRecordingSegment": "正在录音...",
-  "meetingFullTranscription": "会议纪要",
-  "meetingStopConfirmTitle": "结束会议",
-  "meetingStopConfirm": "确定要结束当前会议录制吗？系统会先处理完所有已录制的分段。",
-  "meetingCancelConfirmTitle": "取消会议",
-  "meetingCancelConfirm": "确定要取消并丢弃当前会议吗？此操作不可撤销。",
-  "meetingDeleteConfirmTitle": "删除会议",
-  "meetingDeleteConfirm": "确定要删除这条会议纪要吗？此操作不可撤销。",
-  "meetingDate": "日期",
-  "meetingDuration": "时长",
-  "meetingTotalChars": "总字数",
-  "meetingTitle": "会议标题",
-  "meetingSaved": "已保存",
-  "meetingSummary": "会议摘要",
-  "meetingContent": "会议内容",
-  "meetingCopyAll": "复制全文",
-  "meetingExportText": "导出为文本",
-  "meetingExportMarkdown": "导出为 Markdown",
-  "meetingExported": "已导出到剪贴板",
-  "meetingEmptyContent": "内容为空",
-  "meetingNotFound": "会议纪要不存在",
-  "meetingOverlayStarting": "会议启动中",
-  "meetingOverlayRecording": "会议录音中",
-  "meetingOverlayPaused": "会议暂停",
-  "meetingOverlayProcessing": "会议处理中",
-  "meetingRecordingBanner": "会议录音进行中",
-  "meetingReturnToRecording": "返回录音",
-  "meetingSegmentView": "分段视图",
-  "meetingMergedNoteView": "合并纪要",
-  "meetingLiveSummaryView": "实时摘要",
-  "meetingLiveSummaryWaiting": "等待录音内容积累后生成摘要...",
-  "meetingFinalizing": "后台优化中",
-  "meetingSummaryUpdating": "摘要更新中...",
-  "meetingStreamingMerge": "合并中...",
-  "meetingDashboardToday": "今日会议",
-  "meetingDashboardRecents": "最近会议",
-  "meetingDashboardLive": "实时会议",
-  "meetingDashboardCancel": "取消",
-  "meetingDashboardSaveNotes": "保存笔记",
-  "meetingDetailTab": "会议详情",
-  "meetingSummaryTab": "会议总结",
-  "meetingGeneratingSummary": "正在生成会议总结...",
-  "meetingNoSummary": "暂无会议总结",
-  "meetingRegenerateSummary": "重新生成",
-  "meetingUnifyRebuild": "统一重算",
-  "meetingUnifyRebuildTitle": "统一重算历史会议",
-  "meetingUnifyRebuildConfirm": "将按分段视图相同规则（优先增强文本）重算会议纪要与会议总结。是否继续？",
-  "meetingUnifyRebuildRunning": "正在统一重算，请稍候...",
-  "meetingUnifyRebuildDone": "已完成统一重算：{count} 条",
-  "@meetingUnifyRebuildDone": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "meetingStatsSummary": "共 {totalCount} 条 · 已完成 {completedCount} 条",
-  "@meetingStatsSummary": {
-    "placeholders": {
-      "totalCount": {
-        "type": "int"
-      },
-      "completedCount": {
-        "type": "int"
-      }
-    }
-  },
-  "meetingRecoverRecording": "修复录音",
-  "meetingRecoverRecordingSuccess": "已修复 {count} 条卡住录音会话",
-  "@meetingRecoverRecordingSuccess": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "meetingRecoverRecordingNone": "未发现卡住录音会话",
-  "meetingSearchHint": "搜索会议标题/摘要/内容",
-  "meetingManageGroups": "管理分组",
-  "meetingMoreActions": "更多操作",
-  "meetingMoveToGroup": "移动分组",
-  "meetingMoveToGroupTitle": "移动到分组",
-  "meetingCreateGroupAndMove": "新建分组并移动",
-  "meetingGroupManageTitle": "分组管理",
-  "meetingGroupManageEmptyHint": "还没有自定义分组，点击下方按钮创建。",
-  "meetingGroupClose": "关闭",
-  "meetingGroupCreate": "新建分组",
-  "meetingGroupCreateTitle": "新建分组",
-  "meetingGroupNameHint": "输入分组名",
-  "meetingGroupRenameTitle": "重命名分组",
-  "meetingGroupRenameHint": "输入新的分组名",
-  "meetingAllGroups": "全部",
-  "meetingUngrouped": "未分组",
-  "meetingStartFailed": "会议启动失败: {error}",
-  "@meetingStartFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "meetingStopFailed": "停止会议失败：{error}",
-  "@meetingStopFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "meetingMovedToFinalizing": "会议已进入{status}",
-  "@meetingMovedToFinalizing": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      }
-    }
-  },
-  "meetingStoppingPleaseWait": "正在停止会议，请稍候…",
-  "meetingStopping": "正在停止会议…",
   "addToDictionary": "加入提示词词典",
   "addedToDictionary": "已加入词典",
   "originalSttText": "原始语音识别文本",
-
   "home": "首页",
   "workspaceLabel": "工作区",
   "settings": "设置",
-
   "vendorLocalModel": "本地模型",
   "vendorCustom": "自定义",
   "localModelSttHint": "本地模型通过 sherpa-onnx 在本机运行，只需下载 ONNX 模型文件即可使用",
   "localSttTinyDesc": "Tiny (~75MB) - 速度最快，适合日常使用",
   "localSttBaseDesc": "Base (~142MB) - 平衡速度与准确率",
   "localSttSmallDesc": "Small (~466MB) - 更高准确率",
-  "localModelAiHint": "本地模型通过 FFI 直接调用 llama.cpp，无需联网即可使用，支持 macOS 和 Windows",
-  "localAiQ5Desc": "Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐，质量与速度平衡",
-  "localAiQ4Desc": "Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快",
-  "localAiQwen35_2BDesc": "Qwen3.5 2B Q4_K_M (~1.5GB) - 轻量新一代，质量提升显著",
-  "localAiQwen35_4BDesc": "Qwen3.5 4B Q4_K_M (~2.7GB) - 推荐，速度与质量均衡",
-  "localAiQwen35_9BDesc": "Qwen3.5 9B Q4_K_M (~5.5GB) - 高质量，16GB+ 内存推荐",
   "download": "下载",
   "downloaded": "已下载",
   "customTemplateSummary": "自定义模板",

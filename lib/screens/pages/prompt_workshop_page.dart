@@ -35,8 +35,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
         return l10n.promptBuiltinColloquialName;
       case 'builtin_translate_en':
         return l10n.promptBuiltinTranslateEnName;
-      case 'builtin_meeting':
-        return l10n.promptBuiltinMeetingName;
       default:
         return template.name;
     }
@@ -58,8 +56,6 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
         return l10n.promptBuiltinColloquialSummary;
       case 'builtin_translate_en':
         return l10n.promptBuiltinTranslateEnSummary;
-      case 'builtin_meeting':
-        return l10n.promptBuiltinMeetingSummary;
       default:
         return template.summary;
     }

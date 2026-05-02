@@ -3,14 +3,12 @@ class AiVendorPreset {
   final String baseUrl;
   final List<AiModel> models;
   final String? defaultModelIdOverride;
-  final bool isLocal;
 
   const AiVendorPreset({
     required this.name,
     required this.baseUrl,
     required this.models,
     this.defaultModelIdOverride,
-    this.isLocal = false,
   });
 
   String get defaultModelId => defaultModelIdOverride ?? models.first.id;
@@ -70,53 +68,15 @@ class AiVendorPreset {
       ],
       defaultModelIdOverride: 'gemini-3.0-pro',
     ),
-    AiVendorPreset(
-      name: 'Local Model',
-      baseUrl: '',
-      isLocal: true,
-      models: [
-        AiModel(
-          id: 'Qwen3.5-4B-Q4_K_M.gguf',
-          description: 'Qwen3.5 4B Q4_K_M (~2.7GB)',
-        ),
-        AiModel(
-          id: 'Qwen3.5-2B-Q4_K_M.gguf',
-          description: 'Qwen3.5 2B Q4_K_M (~1.5GB)',
-        ),
-        AiModel(
-          id: 'Qwen3.5-9B-Q4_K_M.gguf',
-          description: 'Qwen3.5 9B Q4_K_M (~5.5GB)',
-        ),
-        AiModel(
-          id: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
-          description: 'Qwen2.5 7B Q4_K_M (~4.7GB)',
-        ),
-        AiModel(
-          id: 'qwen2.5-0.5b-instruct-q5_k_m.gguf',
-          description: 'Qwen2.5 0.5B Q5_K_M (~400MB)',
-        ),
-        AiModel(
-          id: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf',
-          description: 'Qwen2.5 14B Q4_K_M (~8.9GB)',
-        ),
-        AiModel(
-          id: 'DeepSeek-V2-Lite-Chat-Q4_K_M.gguf',
-          description: 'DeepSeek-V2-Lite (16B) Q4_K_M (~9.8GB)',
-        ),
-      ],
-      defaultModelIdOverride: 'Qwen3.5-4B-Q4_K_M.gguf',
-    ),
   ];
 
   static List<AiVendorPreset> fromPresetJsonList(List<dynamic> items) {
     return items
         .whereType<Map<String, dynamic>>()
         .map((item) {
-          final isLocal = item['isLocal'] == true;
           return AiVendorPreset(
             name: item['name'] ?? '',
             baseUrl: item['baseUrl'] ?? '',
-            isLocal: isLocal,
             models: (item['models'] as List<dynamic>? ?? [])
                 .whereType<Map<String, dynamic>>()
                 .map(AiModel.fromJson)
@@ -130,7 +90,7 @@ class AiVendorPreset {
         .where(
           (preset) =>
               preset.name.isNotEmpty &&
-              (preset.baseUrl.isNotEmpty || preset.isLocal) &&
+              preset.baseUrl.isNotEmpty &&
               preset.models.isNotEmpty,
         )
         .toList();

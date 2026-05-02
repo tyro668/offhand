@@ -22,7 +22,7 @@ void main() {
 
     test('ignores non-entity prose lines', () {
       final result = service.parse('''
-# 会议纪要
+# 项目笔记
 今天讨论了很多内容，需要明天继续梳理方案。
 - 张三丰
 ''');

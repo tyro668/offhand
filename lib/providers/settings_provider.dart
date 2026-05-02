@@ -25,7 +25,7 @@ import '../database/app_database.dart';
 import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/audio_recorder.dart';
-import '../services/local_llm_service.dart';
+import '../services/local_asr_process_manager.dart';
 import '../services/entity_dictionary_bridge.dart';
 import '../services/entity_learning_service.dart';
 import '../services/markdown_term_import_service.dart';
@@ -50,8 +50,6 @@ class SettingsProvider extends ChangeNotifier {
 
   static const _configKey = 'stt_provider_config';
   static const _hotkeyKey = 'hotkey';
-  static const _meetingHotkeyKey = 'meeting_hotkey';
-  static const _meetingHotkeyModifiersKey = 'meeting_hotkey_modifiers';
   static const _activationModeKey = 'activation_mode';
   static const _aiEnhanceEnabledKey = 'ai_enhance_enabled';
   static const _aiEnhanceConfigKey = 'ai_enhance_config';
@@ -84,7 +82,8 @@ class SettingsProvider extends ChangeNotifier {
       'retrospective_correction_enabled';
   static const _historyContextEnhancementEnabledKey =
       'history_context_enhancement_enabled';
-  static const _localLlmIdleUnloadMinutesKey = 'local_llm_idle_unload_minutes';
+  static const _localModelIdleUnloadMinutesKey =
+      'local_llm_idle_unload_minutes';
 
   List<SttProviderConfig> _sttPresets = List<SttProviderConfig>.from(
     SttProviderConfig.fallbackPresets,
@@ -102,21 +101,8 @@ class SettingsProvider extends ChangeNotifier {
     return LogicalKeyboardKey.fn;
   }
 
-  static LogicalKeyboardKey get defaultMeetingHotkey {
-    return LogicalKeyboardKey.keyM;
-  }
-
-  static const int meetingHotkeyModifierCtrl = 1 << 0;
-  static const int meetingHotkeyModifierAlt = 1 << 1;
-  static const int meetingHotkeyModifierShift = 1 << 2;
-  static const int meetingHotkeyModifierMeta = 1 << 3;
-
-  static int get defaultMeetingHotkeyModifiers => meetingHotkeyModifierCtrl;
-
   // 快捷键配置
   LogicalKeyboardKey _hotkey = defaultHotkey;
-  LogicalKeyboardKey _meetingHotkey = defaultMeetingHotkey;
-  int _meetingHotkeyModifiers = defaultMeetingHotkeyModifiers;
   ActivationMode _activationMode = ActivationMode.tapToTalk;
 
   /// 每个服务商独立存储的 API Key（按 name 索引）
@@ -161,7 +147,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _retrospectiveCorrectionEnabled = false;
   bool _historyContextEnhancementEnabled = true;
   String _correctionPrompt = '';
-  int _localLlmIdleUnloadMinutes = 3;
+  int _localModelIdleUnloadMinutes = 3;
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
   );
@@ -176,8 +162,6 @@ class SettingsProvider extends ChangeNotifier {
   List<SttProviderConfig> get sttPresets => _sttPresets;
   List<AiVendorPreset> get aiPresets => _aiPresets;
   LogicalKeyboardKey get hotkey => _hotkey;
-  LogicalKeyboardKey get meetingHotkey => _meetingHotkey;
-  int get meetingHotkeyModifiers => _meetingHotkeyModifiers;
   ActivationMode get activationMode => _activationMode;
   bool get aiEnhanceEnabled => _aiEnhanceEnabled;
   AiEnhanceConfig get aiEnhanceConfig => _aiEnhanceConfig;
@@ -251,7 +235,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get historyContextEnhancementEnabled =>
       _historyContextEnhancementEnabled;
   String get correctionPrompt => _correctionPrompt;
-  int get localLlmIdleUnloadMinutes => _localLlmIdleUnloadMinutes;
+  int get localModelIdleUnloadMinutes => _localModelIdleUnloadMinutes;
   PinyinMatcher get pinyinMatcher => _pinyinMatcher;
   int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
   double get correctionMinCandidateScore => _correctionMinCandidateScore;
@@ -321,6 +305,16 @@ class SettingsProvider extends ChangeNotifier {
     return value;
   }
 
+  bool _isRemovedLocalAiModelEntry(AiModelEntry entry) {
+    return entry.vendorName == 'Local Model' ||
+        entry.vendorName == '本地模型' ||
+        entry.baseUrl.trim().isEmpty;
+  }
+
+  bool _isRemovedLocalAiConfig(AiEnhanceConfig config) {
+    return config.baseUrl.trim().isEmpty && config.apiKey.trim().isEmpty;
+  }
+
   Future<void> load() async {
     final db = AppDatabase.instance;
 
@@ -368,29 +362,6 @@ class SettingsProvider extends ChangeNotifier {
         _hotkey == LogicalKeyboardKey.fn) {
       _hotkey = LogicalKeyboardKey.f2;
       await _saveSetting(_hotkeyKey, _hotkey.keyId.toString());
-    }
-
-    // 加载会议快捷键
-    final meetingHotkeyStr = await db.getSetting(_meetingHotkeyKey);
-    if (meetingHotkeyStr != null) {
-      _meetingHotkey = LogicalKeyboardKey(int.parse(meetingHotkeyStr));
-    }
-    final meetingHotkeyModifiersStr = await db.getSetting(
-      _meetingHotkeyModifiersKey,
-    );
-    if (meetingHotkeyModifiersStr != null) {
-      _meetingHotkeyModifiers =
-          int.tryParse(meetingHotkeyModifiersStr) ??
-          defaultMeetingHotkeyModifiers;
-    }
-    if (_meetingHotkey == LogicalKeyboardKey.fn) {
-      _meetingHotkey = defaultMeetingHotkey;
-      _meetingHotkeyModifiers = defaultMeetingHotkeyModifiers;
-      await _saveSetting(_meetingHotkeyKey, _meetingHotkey.keyId.toString());
-      await _saveSetting(
-        _meetingHotkeyModifiersKey,
-        _meetingHotkeyModifiers.toString(),
-      );
     }
 
     // 加载激活模式
@@ -443,12 +414,33 @@ class SettingsProvider extends ChangeNotifier {
     if (entriesJson != null) {
       try {
         final list = json.decode(entriesJson) as List<dynamic>;
-        _aiModelEntries = list
+        final parsed = list
             .whereType<Map<String, dynamic>>()
             .map((e) => AiModelEntry.fromJson(_cleanApiKeyInJson(e)))
             .toList();
+        _aiModelEntries = parsed
+            .where((entry) => !_isRemovedLocalAiModelEntry(entry))
+            .toList();
+        if (_aiModelEntries.length != parsed.length) {
+          await _saveAiModelEntries();
+        }
       } catch (_) {}
     }
+
+    if (_isRemovedLocalAiConfig(_aiEnhanceConfig)) {
+      _aiEnhanceConfig = AiEnhanceConfig.defaultConfig.copyWith(
+        prompt: _aiEnhanceDefaultPrompt,
+      );
+      await _saveSetting(
+        _aiEnhanceConfigKey,
+        json.encode(_aiEnhanceConfig.toJson()),
+      );
+      if (_aiEnhanceEnabled) {
+        _aiEnhanceEnabled = false;
+        await _saveSetting(_aiEnhanceEnabledKey, 'false');
+      }
+    }
+
     // 如果有激活条目，同步到 aiEnhanceConfig
     final active = activeAiModelEntry;
     if (active != null) {
@@ -703,12 +695,12 @@ class SettingsProvider extends ChangeNotifier {
       _historyContextEnhancementEnabled = historyContextStr == 'true';
     }
 
-    final localLlmIdleUnloadMinutesStr = await db.getSetting(
-      _localLlmIdleUnloadMinutesKey,
+    final localModelIdleUnloadMinutesStr = await db.getSetting(
+      _localModelIdleUnloadMinutesKey,
     );
-    if (localLlmIdleUnloadMinutesStr != null) {
-      _localLlmIdleUnloadMinutes =
-          int.tryParse(localLlmIdleUnloadMinutesStr)?.clamp(0, 30) ?? 3;
+    if (localModelIdleUnloadMinutesStr != null) {
+      _localModelIdleUnloadMinutes =
+          int.tryParse(localModelIdleUnloadMinutesStr)?.clamp(0, 30) ?? 3;
     }
 
     // 加载纠错 prompt
@@ -718,7 +710,9 @@ class SettingsProvider extends ChangeNotifier {
       );
     } catch (_) {}
 
-    await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
+    await LocalAsrProcessManager.instance.setIdleUnloadMinutes(
+      _localModelIdleUnloadMinutes,
+    );
     await _cleanupRemovedSpeakerSettings();
 
     notifyListeners();
@@ -818,28 +812,6 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setMeetingHotkey(
-    LogicalKeyboardKey key, {
-    int? modifiers,
-  }) async {
-    _meetingHotkey = key;
-    _meetingHotkeyModifiers = modifiers ?? _meetingHotkeyModifiers;
-    await _saveSetting(_meetingHotkeyKey, key.keyId.toString());
-    await _saveSetting(
-      _meetingHotkeyModifiersKey,
-      _meetingHotkeyModifiers.toString(),
-    );
-    notifyListeners();
-  }
-
-  Future<void> resetMeetingHotkey() async {
-    _meetingHotkey = defaultMeetingHotkey;
-    _meetingHotkeyModifiers = defaultMeetingHotkeyModifiers;
-    await AppDatabase.instance.removeSetting(_meetingHotkeyKey);
-    await AppDatabase.instance.removeSetting(_meetingHotkeyModifiersKey);
-    notifyListeners();
-  }
-
   static bool isModifierKey(LogicalKeyboardKey key) {
     return key == LogicalKeyboardKey.control ||
         key == LogicalKeyboardKey.controlLeft ||
@@ -853,48 +825,6 @@ class SettingsProvider extends ChangeNotifier {
         key == LogicalKeyboardKey.meta ||
         key == LogicalKeyboardKey.metaLeft ||
         key == LogicalKeyboardKey.metaRight;
-  }
-
-  static int meetingModifiersFromPressedKeys(Set<LogicalKeyboardKey> pressed) {
-    var value = 0;
-    if (pressed.contains(LogicalKeyboardKey.controlLeft) ||
-        pressed.contains(LogicalKeyboardKey.controlRight) ||
-        pressed.contains(LogicalKeyboardKey.control)) {
-      value |= meetingHotkeyModifierCtrl;
-    }
-    if (pressed.contains(LogicalKeyboardKey.altLeft) ||
-        pressed.contains(LogicalKeyboardKey.altRight) ||
-        pressed.contains(LogicalKeyboardKey.alt)) {
-      value |= meetingHotkeyModifierAlt;
-    }
-    if (pressed.contains(LogicalKeyboardKey.shiftLeft) ||
-        pressed.contains(LogicalKeyboardKey.shiftRight) ||
-        pressed.contains(LogicalKeyboardKey.shift)) {
-      value |= meetingHotkeyModifierShift;
-    }
-    if (pressed.contains(LogicalKeyboardKey.metaLeft) ||
-        pressed.contains(LogicalKeyboardKey.metaRight) ||
-        pressed.contains(LogicalKeyboardKey.meta)) {
-      value |= meetingHotkeyModifierMeta;
-    }
-    return value;
-  }
-
-  static String meetingModifierLabel(int modifiers) {
-    final parts = <String>[];
-    if ((modifiers & meetingHotkeyModifierCtrl) != 0) {
-      parts.add('Ctrl');
-    }
-    if ((modifiers & meetingHotkeyModifierAlt) != 0) {
-      parts.add('Alt');
-    }
-    if ((modifiers & meetingHotkeyModifierShift) != 0) {
-      parts.add('Shift');
-    }
-    if ((modifiers & meetingHotkeyModifierMeta) != 0) {
-      parts.add(defaultTargetPlatform == TargetPlatform.macOS ? 'Cmd' : 'Win');
-    }
-    return parts.join('+');
   }
 
   /// 设置激活模式
@@ -1016,8 +946,6 @@ class SettingsProvider extends ChangeNotifier {
   void _syncAiConfigFromActiveEntry() {
     final active = activeAiModelEntry;
     if (active != null) {
-      // 本地模型：baseUrl 和 apiKey 保持为空，
-      // AiEnhanceService 会自动检测并使用 LocalLlmService.localBaseUrl
       _aiEnhanceConfig = _aiEnhanceConfig.copyWith(
         baseUrl: active.baseUrl,
         apiKey: active.apiKey,
@@ -1180,21 +1108,6 @@ class SettingsProvider extends ChangeNotifier {
     return _hotkey.keyLabel.isNotEmpty
         ? _hotkey.keyLabel
         : _hotkey.debugName ?? 'Unknown';
-  }
-
-  /// 获取会议快捷键的显示名称
-  String get meetingHotkeyLabel {
-    final keyLabel = _meetingHotkey.keyLabel.isNotEmpty
-        ? _meetingHotkey.keyLabel
-        : _meetingHotkey.debugName ?? 'Unknown';
-    if (_meetingHotkeyModifiers == 0) {
-      return keyLabel;
-    }
-    final modifierLabel = meetingModifierLabel(_meetingHotkeyModifiers);
-    if (modifierLabel.isEmpty) {
-      return keyLabel;
-    }
-    return '$modifierLabel+$keyLabel';
   }
 
   /// 设置语言
@@ -2544,13 +2457,15 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setLocalLlmIdleUnloadMinutes(int minutes) async {
-    _localLlmIdleUnloadMinutes = minutes.clamp(0, 30);
+  Future<void> setLocalModelIdleUnloadMinutes(int minutes) async {
+    _localModelIdleUnloadMinutes = minutes.clamp(0, 30);
     await _saveSetting(
-      _localLlmIdleUnloadMinutesKey,
-      _localLlmIdleUnloadMinutes.toString(),
+      _localModelIdleUnloadMinutesKey,
+      _localModelIdleUnloadMinutes.toString(),
     );
-    await LocalLlmService.setIdleUnloadMinutes(_localLlmIdleUnloadMinutes);
+    await LocalAsrProcessManager.instance.setIdleUnloadMinutes(
+      _localModelIdleUnloadMinutes,
+    );
     notifyListeners();
   }
 

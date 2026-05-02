@@ -6,7 +6,6 @@ import 'ai_providers/zai_ai_provider.dart';
 import 'ai_providers/deepseek_ai_provider.dart';
 import 'ai_providers/aliyun_ai_provider.dart';
 import 'ai_providers/gemini_ai_provider.dart';
-import 'ai_providers/local_llm_ai_provider.dart';
 
 // Re-export types for backward compatibility
 export 'ai_providers/ai_provider.dart'
@@ -23,15 +22,10 @@ class AiEnhanceService {
 
   AiEnhanceService(this.config);
 
-  /// Whether this config represents a local model (empty baseUrl + empty apiKey).
-  bool get _isLocalModel =>
-      config.baseUrl.trim().isEmpty && config.apiKey.trim().isEmpty;
-
   /// 根据 config 路由到对应的 AiProvider 实现。
   AiProvider _resolveProvider() {
-    // 本地模型
-    if (_isLocalModel) {
-      return LocalLlmAiProvider(config);
+    if (config.baseUrl.trim().isEmpty) {
+      throw AiEnhanceException('本地文本模型已移除，请配置云端或 OpenAI 兼容文本模型');
     }
 
     final baseUrl = config.baseUrl.trim().toLowerCase();

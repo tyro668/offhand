@@ -8,14 +8,11 @@ import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
 import '../providers/recording_provider.dart';
 import '../providers/settings_provider.dart';
-import '../providers/meeting_provider.dart';
 import '../services/log_service.dart';
 import '../services/audio_recorder.dart';
 import '../services/overlay_service.dart';
 import 'pages/dictionary_page.dart';
 import 'pages/history_page.dart';
-import 'pages/meeting_recording_page.dart';
-import 'pages/meeting_dashboard_page.dart';
 import 'pages/dashboard_page.dart';
 import 'settings_screen.dart';
 
@@ -86,8 +83,6 @@ class _MainScreenState extends State<MainScreen> {
         return l10n.promptBuiltinColloquialName;
       case 'builtin_translate_en':
         return l10n.promptBuiltinTranslateEnName;
-      case 'builtin_meeting':
-        return l10n.promptBuiltinMeetingName;
       default:
         return template.name;
     }
@@ -101,11 +96,9 @@ class _MainScreenState extends State<MainScreen> {
   bool _checkingHomePermissions = false;
   bool _homePermissionsChecked = false;
   LogicalKeyboardKey? _lastRegisteredHotkey;
-  LogicalKeyboardKey? _lastRegisteredMeetingHotkey;
-  int? _lastRegisteredMeetingHotkeyModifiers;
   bool _fnTapToTalkPressCandidate = false;
 
-  /// 主导航项（首页 / 记忆库 / 转写档案 / 会议纪要）
+  /// 主导航项（首页 / 记忆库 / 转写档案）
   List<_NavItem> _getNavItems(
     AppLocalizations l10n, {
     required int pendingCandidateCount,
@@ -117,10 +110,6 @@ class _MainScreenState extends State<MainScreen> {
       badgeCount: pendingCandidateCount,
     ),
     _NavItem(icon: Icons.history_outlined, label: l10n.history),
-    _NavItem(
-      icon: Icons.record_voice_over_outlined,
-      label: l10n.meetingMinutes,
-    ),
   ];
 
   @override
@@ -133,7 +122,6 @@ class _MainScreenState extends State<MainScreen> {
       _settingsProvider = settings;
       _settingsListener = () {
         _registerCurrentHotkey(settings);
-        _registerMeetingHotkey(settings);
       };
       settings.addListener(_settingsListener);
       _settingsListener();
@@ -202,68 +190,6 @@ class _MainScreenState extends State<MainScreen> {
       LogService.info('HOTKEY', 'registerHotkey result=$ok');
       if (!mounted || ok) return;
     });
-  }
-
-  void _registerMeetingHotkey(SettingsProvider settings) {
-    if (settings.meetingHotkey == _lastRegisteredMeetingHotkey &&
-        settings.meetingHotkeyModifiers ==
-            _lastRegisteredMeetingHotkeyModifiers) {
-      return;
-    }
-    _lastRegisteredMeetingHotkey = settings.meetingHotkey;
-    _lastRegisteredMeetingHotkeyModifiers = settings.meetingHotkeyModifiers;
-
-    final keyCode = _platformKeyCodeFor(settings.meetingHotkey);
-    if (keyCode == null) return;
-
-    final modifiers = _platformHotkeyModifiersFor(
-      settings.meetingHotkeyModifiers,
-    );
-
-    LogService.info(
-      'HOTKEY',
-      'registering meeting hotkey keyCode=$keyCode modifiers=$modifiers',
-    );
-    OverlayService.registerMeetingHotkey(
-      keyCode: keyCode,
-      modifiers: modifiers,
-    ).then((ok) {
-      LogService.info('HOTKEY', 'registerMeetingHotkey result=$ok');
-    });
-  }
-
-  int _platformHotkeyModifiersFor(int modifiersMask) {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      var modifiers = 0;
-      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierCtrl) != 0) {
-        modifiers |= 0x0002;
-      }
-      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierAlt) != 0) {
-        modifiers |= 0x0001;
-      }
-      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierShift) != 0) {
-        modifiers |= 0x0004;
-      }
-      if ((modifiersMask & SettingsProvider.meetingHotkeyModifierMeta) != 0) {
-        modifiers |= 0x0008;
-      }
-      return modifiers;
-    }
-
-    var modifiers = 0;
-    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierCtrl) != 0) {
-      modifiers |= 1 << 12;
-    }
-    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierAlt) != 0) {
-      modifiers |= 1 << 11;
-    }
-    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierShift) != 0) {
-      modifiers |= 1 << 9;
-    }
-    if ((modifiersMask & SettingsProvider.meetingHotkeyModifierMeta) != 0) {
-      modifiers |= 1 << 8;
-    }
-    return modifiers;
   }
 
   bool _hasValidSttModel(SettingsProvider settings) {
@@ -370,18 +296,6 @@ class _MainScreenState extends State<MainScreen> {
     final key = _platformKeyFromCode(keyCode);
     if (key == null) return;
 
-    // 会议快捷键处理
-    if (key == settings.meetingHotkey) {
-      final expectedMeetingModifiers = _platformHotkeyModifiersFor(
-        settings.meetingHotkeyModifiers,
-      );
-      if (modifiers != expectedMeetingModifiers) {
-        return;
-      }
-      _handleMeetingHotkey(type, settings);
-      return;
-    }
-
     // 单键快捷键：有修饰键（Cmd/Ctrl/Alt/Shift）按下时忽略
     if (hasModifiers) return;
 
@@ -463,47 +377,6 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  void _handleMeetingHotkey(String type, SettingsProvider settings) {
-    if (type != 'down') return;
-
-    final meeting = context.read<MeetingProvider>();
-    LogService.info(
-      'HOTKEY',
-      'meeting hotkey: isRecording=${meeting.isRecording}',
-    );
-
-    if (meeting.isRecording) {
-      // 正在录制 → 结束会议
-      unawaited(meeting.stopMeetingFast());
-    } else {
-      // 未录制 → 开始新会议
-      if (!_hasValidSttModel(settings)) {
-        _promptSttConfig();
-        return;
-      }
-      meeting.startMeeting(
-        sttConfig: settings.config,
-        aiConfig: settings.effectiveAiEnhanceConfig,
-        aiEnhanceEnabled: settings.aiEnhanceEnabled,
-        dictionarySuffix: settings.dictionaryWordsForPrompt,
-        dictionaryEntries: settings.dictionaryEntries,
-        termContextEntries: settings.termContextEntries,
-        historyEntries: context.read<RecordingProvider>().contextHistory,
-        entityMemories: settings.entityMemories,
-        entityAliases: settings.entityAliases,
-        entityRelations: settings.entityRelations,
-        pinyinMatcher: settings.correctionEffective
-            ? settings.pinyinMatcher
-            : null,
-        correctionPrompt: settings.correctionEffective
-            ? settings.correctionPrompt
-            : null,
-        maxReferenceEntries: settings.correctionMaxReferenceEntries,
-        minCandidateScore: settings.correctionMinCandidateScore,
-      );
-    }
-  }
-
   /// 根据 SettingsProvider 状态配置或禁用纠错服务。
   void _configureCorrection(
     SettingsProvider settings,
@@ -564,11 +437,6 @@ class _MainScreenState extends State<MainScreen> {
       transcribing: l10n.overlayTranscribing,
       enhancing: l10n.overlayEnhancing,
       transcribeFailed: l10n.overlayTranscribeFailed,
-    );
-    context.read<MeetingProvider>().setOverlayStateLabels(
-      starting: l10n.meetingOverlayStarting,
-      recording: l10n.meetingOverlayRecording,
-      processing: l10n.meetingOverlayProcessing,
     );
     OverlayService.setTrayLabels(open: l10n.trayOpen, quit: l10n.trayQuit);
 
@@ -810,6 +678,7 @@ class _MainScreenState extends State<MainScreen> {
               );
             }),
             const Spacer(),
+            _buildSidebarPermissionPanel(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Divider(
@@ -943,7 +812,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildContent() {
-    Widget page = switch (_selectedNav) {
+    return switch (_selectedNav) {
       0 => const DashboardPage(),
       1 => const DictionaryPage(),
       2 => HistoryPage(
@@ -953,249 +822,157 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
       ),
-      3 => MeetingDashboardPage(
-        onStopReturnHome: () {
-          if (!mounted) return;
-          setState(() {
-            _selectedNav = 0;
-          });
-        },
-      ),
       _ => const SizedBox(),
     };
-
-    final showHomePermissionCard =
-        _selectedNav == 0 &&
-        defaultTargetPlatform == TargetPlatform.macOS &&
-        _homePermissionsChecked &&
-        (!_homeMicPermission || !_homeAccessibilityPermission);
-
-    if (showHomePermissionCard) {
-      page = Column(
-        children: [
-          _buildHomePermissionCard(),
-          Expanded(child: page),
-        ],
-      );
-    }
-
-    final meetingProvider = context.watch<MeetingProvider>();
-    // 会议仪表盘页面已内嵌实时录制面板，其他页面仍显示录制横幅
-    if (!meetingProvider.isRecording || _selectedNav == 3) return page;
-
-    return Column(
-      children: [
-        _buildRecordingBanner(meetingProvider),
-        Expanded(child: page),
-      ],
-    );
   }
 
-  Widget _buildHomePermissionCard() {
+  Widget _buildSidebarPermissionPanel() {
+    if (defaultTargetPlatform != TargetPlatform.macOS) {
+      return const SizedBox.shrink();
+    }
+
+    final hasMissingPermission =
+        !_homePermissionsChecked ||
+        !_homeMicPermission ||
+        !_homeAccessibilityPermission;
+    if (!_checkingHomePermissions && !hasMissingPermission) {
+      return const SizedBox.shrink();
+    }
+
     final l10n = AppLocalizations.of(context)!;
     final showMic = !_homeMicPermission;
     final showAccessibility = !_homeAccessibilityPermission;
 
-    Widget permissionItem({
+    Widget permissionRow({
       required IconData icon,
       required String title,
-      required VoidCallback onTap,
+      required bool granted,
+      required VoidCallback? onTap,
     }) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: _cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _cs.outlineVariant.withValues(alpha: 0.6),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 16, color: _cs.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _cs.onSurface,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                l10n.permissionDenied,
+      final statusColor = granted ? _cs.primary : _cs.error;
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: _cs.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: _cs.error,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: _cs.onSurface,
                 ),
               ),
-              const SizedBox(height: 8),
+            ),
+            const SizedBox(width: 8),
+            if (granted)
+              Icon(Icons.check_circle_rounded, size: 16, color: statusColor)
+            else
               SizedBox(
-                height: 30,
+                height: 28,
                 child: FilledButton.tonal(
-                  onPressed: onTap,
+                  onPressed: _checkingHomePermissions ? null : onTap,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   child: Text(l10n.openSettings),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       );
     }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(32, 24, 32, 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _cs.surfaceContainer,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.security_outlined, size: 18, color: _cs.primary),
-              const SizedBox(width: 8),
-              Expanded(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            _cs.error.withValues(alpha: hasMissingPermission ? 0.035 : 0.0),
+            _cs.surface,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasMissingPermission
+                ? _cs.error.withValues(alpha: 0.18)
+                : _cs.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.security_outlined, size: 17, color: _cs.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.permissions,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _cs.onSurface,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l10n.fixPermissionIssues,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _checkingHomePermissions
+                      ? null
+                      : _refreshHomePermissions,
+                  icon: _checkingHomePermissions
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _cs.primary,
+                          ),
+                        )
+                      : const Icon(Icons.refresh, size: 17),
+                ),
+              ],
+            ),
+            if (!_homePermissionsChecked && !_checkingHomePermissions)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  l10n.permissions,
+                  l10n.fixPermissionIssues,
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _cs.onSurface,
+                    fontSize: 12,
+                    color: _cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: l10n.fixPermissionIssues,
-                onPressed: _checkingHomePermissions
-                    ? null
-                    : _refreshHomePermissions,
-                icon: _checkingHomePermissions
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: _cs.primary,
-                        ),
-                      )
-                    : const Icon(Icons.refresh, size: 18),
+            if (showMic || !_homePermissionsChecked)
+              permissionRow(
+                icon: Icons.mic_outlined,
+                title: l10n.testMicrophonePermission,
+                granted: _homePermissionsChecked && _homeMicPermission,
+                onTap: _requestMicPermissionFromHome,
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              if (showMic)
-                permissionItem(
-                  icon: Icons.mic_outlined,
-                  title: l10n.testMicrophonePermission,
-                  onTap: _requestMicPermissionFromHome,
-                ),
-              if (showMic && showAccessibility) const SizedBox(width: 10),
-              if (showAccessibility)
-                permissionItem(
-                  icon: Icons.accessibility_new_outlined,
-                  title: l10n.testAccessibilityPermission,
-                  onTap: _requestAccessibilityPermissionFromHome,
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecordingBanner(MeetingProvider meetingProvider) {
-    final l10n = AppLocalizations.of(context)!;
-    final settings = context.read<SettingsProvider>();
-    final duration = meetingProvider.recordingDuration;
-    final m = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    final h = duration.inHours;
-    final timeStr = h > 0 ? '$h:$m:$s' : '$m:$s';
-
-    return Material(
-      color: Colors.red.withValues(alpha: 0.08),
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider.value(
-                value: meetingProvider,
-                child: MeetingRecordingPage(
-                  sttConfig: settings.config,
-                  aiConfig: settings.effectiveAiEnhanceConfig,
-                  aiEnhanceEnabled: settings.aiEnhanceEnabled,
-                  dictionarySuffix: settings.dictionaryWordsForPrompt,
-                  onStopReturnHome: () {
-                    if (!mounted) return;
-                    setState(() {
-                      _selectedNav = 0;
-                    });
-                  },
-                ),
+            if (showAccessibility || !_homePermissionsChecked)
+              permissionRow(
+                icon: Icons.accessibility_new_outlined,
+                title: l10n.testAccessibilityPermission,
+                granted:
+                    _homePermissionsChecked && _homeAccessibilityPermission,
+                onTap: _requestAccessibilityPermissionFromHome,
               ),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                l10n.meetingRecordingBanner,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                timeStr,
-                style: TextStyle(
-                  color: Colors.red.withValues(alpha: 0.7),
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                l10n.meetingReturnToRecording,
-                style: TextStyle(
-                  color: _cs.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right, size: 18, color: _cs.primary),
-            ],
-          ),
+          ],
         ),
       ),
     );

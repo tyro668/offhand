@@ -211,30 +211,6 @@
           "supportsVision": true
         }
       ]
-    },
-    {
-      "name": "Local Model",
-      "baseUrl": "",
-      "isLocal": true,
-      "defaultModel": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
-      "models": [
-        {
-          "id": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
-          "description": "Qwen2.5 0.5B Q5_K_M (~400MB) - 推荐"
-        },
-        {
-          "id": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-          "description": "Qwen2.5 0.5B Q4_K_M (~350MB) - 更小更快"
-        },
-        {
-          "id": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
-          "description": "Qwen2.5 7B Q4_K_M (~4.7GB) - 中等显存推荐"
-        },
-        {
-          "id": "Qwen2.5-14B-Instruct-Q4_K_M.gguf",
-          "description": "Qwen2.5 14B Q4_K_M (~8.9GB) - 高质量（需更高内存）"
-        }
-      ]
     }
   ]
 }

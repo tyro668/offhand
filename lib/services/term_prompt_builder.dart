@@ -135,7 +135,7 @@ class TermPromptBuilder {
 
     if (preferredTerms.isNotEmpty) {
       buf.writeln();
-      buf.writeln('【会议记忆参考】');
+      buf.writeln('【听写记忆参考】');
       buf.writeln('请优先保持以下术语、名称与写法一致：');
       for (final term in preferredTerms.take(20)) {
         buf.writeln('- $term');
@@ -145,7 +145,7 @@ class TermPromptBuilder {
     if (correctionReferences.isNotEmpty) {
       if (buf.isEmpty) {
         buf.writeln();
-        buf.writeln('【会议记忆参考】');
+        buf.writeln('【听写记忆参考】');
       }
       buf.writeln('若出现同音、近音或误写，请优先参考以下纠正规则：');
       for (final item in correctionReferences.take(20)) {
@@ -156,7 +156,7 @@ class TermPromptBuilder {
     if (contextDocuments.isNotEmpty) {
       if (buf.isEmpty) {
         buf.writeln();
-        buf.writeln('【会议记忆参考】');
+        buf.writeln('【听写记忆参考】');
       }
       buf.writeln('可参考以下上下文资料：');
       for (final entry in contextDocuments) {
@@ -168,7 +168,7 @@ class TermPromptBuilder {
     if (entityBundle.correctionEntitySection.trim().isNotEmpty) {
       if (buf.isEmpty) {
         buf.writeln();
-        buf.writeln('【会议记忆参考】');
+        buf.writeln('【听写记忆参考】');
       }
       buf.writeln('以下实体名称、别称和误识别映射需要优先保持一致：');
       buf.writeln(entityBundle.correctionEntitySection.trim());
@@ -177,7 +177,7 @@ class TermPromptBuilder {
     if (entityBundle.correctionRelationSection.trim().isNotEmpty) {
       if (buf.isEmpty) {
         buf.writeln();
-        buf.writeln('【会议记忆参考】');
+        buf.writeln('【听写记忆参考】');
       }
       buf.writeln('实体关系参考：');
       buf.writeln(entityBundle.correctionRelationSection.trim());

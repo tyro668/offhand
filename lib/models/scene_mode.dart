@@ -3,8 +3,7 @@ enum SceneMode {
   general,
   email,
   codeComment,
-  chat,
-  meetingNotes;
+  chat;
 
   String get label {
     switch (this) {
@@ -16,8 +15,6 @@ enum SceneMode {
         return '代码注释';
       case SceneMode.chat:
         return '即时通讯';
-      case SceneMode.meetingNotes:
-        return '会议纪要';
     }
   }
 
@@ -31,8 +28,6 @@ enum SceneMode {
         return 'Code Comment';
       case SceneMode.chat:
         return 'Chat';
-      case SceneMode.meetingNotes:
-        return 'Meeting Notes';
     }
   }
 
@@ -47,8 +42,6 @@ enum SceneMode {
         return '\n\n【场景模式：代码注释】请将文本整理为简洁的代码注释风格。保留所有技术术语和英文变量名/函数名不翻译。使用简洁明了的表述。';
       case SceneMode.chat:
         return '\n\n【场景模式：即时通讯】保持口语化和轻松的语气，仅修正明显错误和添加必要标点。不要将文本正式化。';
-      case SceneMode.meetingNotes:
-        return '\n\n【场景模式：会议纪要】将文本整理为结构化的会议纪要格式，提取关键讨论点、决议和待办事项。使用要点列表格式。';
     }
   }
 

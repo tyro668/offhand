@@ -20,8 +20,6 @@ flutter run  -d macos
 flutter run  -d windows
 ```
 
-说明：开发环境默认使用精简模式（不启用本地文本模型，不依赖 llamadart），避免首次调试时下载本地原生库失败。GitHub Actions 打包发布版本会自动启用完整本地模型支持。
-
 ## 构建安装文件
 
 如果要在自己电脑上构建，使用以下的方式，如果要直接下载使用，在这里[下载安装文件](https://github.com/tyro668/voicetype/releases)。

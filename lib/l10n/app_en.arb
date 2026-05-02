@@ -4,9 +4,7 @@
   "@appTitle": {
     "description": "The title of the application"
   },
-
   "loading": "Loading...",
-
   "generalSettings": "General",
   "voiceModelSettings": "Voice Model",
   "textModelSettings": "Text Model",
@@ -18,7 +16,6 @@
   "historyContextCount": "Context History",
   "logs": "Logs",
   "about": "About",
-
   "activationMode": "Activation Mode",
   "tapToTalk": "Tap Mode",
   "tapToTalkSubtitle": "Tap to start, tap to stop",
@@ -26,15 +23,11 @@
   "pushToTalk": "Hold Mode",
   "pushToTalkSubtitle": "Hold to record, release to stop",
   "pushToTalkDescription": "Hold hotkey to record, release to stop",
-
   "dictationHotkey": "Dictation Hotkey",
   "dictationHotkeyDescription": "Configure the hotkey for starting and stopping voice dictation.",
-  "meetingHotkey": "Meeting Recording Hotkey",
-  "meetingHotkeyDescription": "Configure the key combination for starting and ending meeting recording. The default is Ctrl+M. Press once to start, press again to end.",
   "pressKeyToSet": "Press a key to set as hotkey",
   "clickToChangeHotkey": "Click to change hotkey",
   "resetToDefault": "Reset to Default",
-
   "permissions": "Permissions",
   "permissionsDescription": "Manage system permissions for optimal performance.",
   "microphonePermission": "Microphone Permission",
@@ -49,7 +42,6 @@
   "openSoundInput": "Open Sound Input",
   "openMicrophonePrivacy": "Open Microphone Privacy",
   "openAccessibilityPrivacy": "Open Accessibility Privacy",
-
   "microphoneInput": "Microphone Input",
   "microphoneInputDescription": "Select the microphone for dictation. Enable 'Prefer Built-in Microphone' to prevent audio interruptions when using Bluetooth headphones.",
   "preferBuiltInMicrophone": "Prefer Built-in Microphone",
@@ -58,19 +50,15 @@
   "unknownDevice": "Unknown Device",
   "noMicrophoneDetected": "No microphone detected",
   "using": "Using",
-
   "minRecordingDuration": "Minimum Recording Duration",
   "minRecordingDurationDescription": "Recordings shorter than this duration will be automatically ignored to avoid accidental triggers.",
   "ignoreShortRecordings": "Ignore recordings shorter than",
   "seconds": "seconds",
-
   "language": "Language",
   "languageDescription": "Select your preferred interface language.",
   "interfaceLanguage": "Interface Language",
   "english": "English",
   "simplifiedChinese": "简体中文",
-
-  "logs": "Logs",
   "logsDescription": "View and manage application log files.",
   "logFile": "Log File",
   "noLogFile": "No Log File",
@@ -79,7 +67,6 @@
   "logPathCopied": "Log path copied to clipboard",
   "tip": "Tip",
   "logsTip": "Log files contain application runtime records for troubleshooting. If the app encounters issues, you can provide this log file to developers for analysis.",
-
   "recordingStorage": "Recording Storage",
   "recordingStorageDescription": "View and manage recording audio files.",
   "recordingFiles": "Recording Files",
@@ -89,7 +76,6 @@
   "clearRecordingFiles": "Clear Files",
   "clearRecordingFilesConfirm": "Are you sure you want to delete all recording files? This action cannot be undone.",
   "confirm": "Confirm",
-
   "addModel": "Add Model",
   "addVoiceModel": "Add Voice Model",
   "addTextModel": "Add Text Model",
@@ -133,10 +119,8 @@
   "noModelsAdded": "No models added yet",
   "addVoiceModelHint": "Click the button below to add a speech recognition model",
   "addTextModelHint": "Click the button below to add a large language model",
-
   "enableTextEnhancement": "Enable Text Enhancement",
   "textEnhancementDescription": "Use AI to enhance and correct transcribed text.",
-
   "prompt": "Prompt",
   "promptDescription": "Customize the AI behavior for text enhancement.",
   "defaultPrompt": "Default Prompt",
@@ -145,7 +129,6 @@
   "agentName": "Agent Name",
   "enterAgentName": "Enter agent name",
   "current": "Current",
-  "custom": "Custom",
   "test": "Test",
   "currentSystemPrompt": "Current System Prompt",
   "customPromptTitle": "Custom Prompt",
@@ -164,7 +147,6 @@
   "runTest": "Run Test",
   "outputResult": "Output Result",
   "outputWillAppearHere": "Output will appear here",
-
   "historySection": "Transcription Archive",
   "noHistory": "No transcription archives",
   "historyHint": "Use a hotkey to start recording. Enhanced transcription results will be archived here.",
@@ -177,17 +159,14 @@
   "copiedToClipboard": "Copied to clipboard",
   "deleteHistoryItem": "Delete",
   "searchHistory": "Search transcription archives...",
-
   "aboutSection": "About",
   "appDescription": "Offhand is a voice input tool that supports multiple cloud LLMs and local ASR models powered by sherpa-onnx, turning speech into text instantly.",
   "appSlogan": "Speak freely, write unbound.",
   "version": "Version",
   "checkForUpdates": "Check for Updates",
   "openSourceLicenses": "Open Source Licenses",
-
   "required": "Required",
   "optional": "Optional",
-
   "networkSettings": "Network",
   "networkSettingsDescription": "Configure the network proxy mode for the application.",
   "systemSettings": "System",
@@ -201,7 +180,6 @@
   "systemProxySubtitle": "Requests follow the system network proxy configuration.",
   "noProxy": "No Proxy",
   "noProxySubtitle": "All requests connect directly without any proxy.",
-
   "inputMonitoringRequired": "Input Monitoring Required",
   "inputMonitoringDescription": "The Fn global hotkey requires enabling Offhand in \"System Settings > Privacy & Security > Input Monitoring\".",
   "accessibilityRequired": "Accessibility Permission Required",
@@ -209,20 +187,17 @@
   "later": "Later",
   "openSettings": "Open Settings",
   "pleaseConfigureSttModel": "Please configure a speech recognition model first",
-
   "overlayStarting": "Mic starting",
   "overlayRecording": "Recording",
   "overlayTranscribing": "Transcribing",
   "overlayEnhancing": "Enhancing",
   "overlayTranscribeFailed": "Transcribe failed",
-
   "theme": "Theme",
   "themeDescription": "Choose the appearance theme for the application.",
   "themeMode": "Appearance",
   "themeSystem": "System",
   "themeLight": "Light",
   "themeDark": "Dark",
-
   "localModelIdleUnloadTitle": "Local model idle unload",
   "localModelIdleUnloadDescription": "Unload local model after idle period to reduce memory usage",
   "localModelIdleUnloadTiming": "Release timing",
@@ -251,7 +226,6 @@
       }
     }
   },
-
   "dashboard": "Dashboard",
   "totalTranscriptions": "Total Transcriptions",
   "totalRecordingTime": "Total Recording Time",
@@ -304,12 +278,10 @@
       }
     }
   },
-
   "enhanceTokenUsage": "Voice Input Tokens",
   "enhanceInputTokens": "Input Tokens",
   "enhanceOutputTokens": "Output Tokens",
   "enhanceTotalTokens": "Total Tokens",
-  "meetingTokenUsage": "Meeting Recording Tokens",
   "correctionTokenUsage": "Correction Tokens",
   "correctionRecallEfficiency": "Correction Recall Efficiency",
   "correctionTotalCalls": "Correction Calls",
@@ -327,42 +299,34 @@
   "correctionSourceRealtime": "Realtime",
   "correctionSourceRetrospective": "Retrospective",
   "allTokenUsage": "All Tokens Summary",
-
   "retroTokenUsage": "Retrospective Tokens",
   "retroSectionTitle": "Retrospective Correction",
   "retroTotalCalls": "Retro Calls",
   "retroLlmCalls": "LLM Calls",
   "retroTextChangedCount": "Text Changed",
   "retroTextChangedRate": "Change Rate",
-
   "glossarySectionTitle": "Terminology Anchoring",
   "glossaryPins": "New Pins",
   "glossaryStrongPromotions": "Strong Promotions",
   "glossaryOverrides": "Manual Overrides",
   "glossaryInjections": "#R Injections",
-
   "showInDock": "Show in Dock",
   "showInDockDescription": "Show the application icon in the macOS Dock.",
   "showInDockFailed": "Failed to change Dock visibility",
-
   "trayOpen": "Open",
   "trayQuit": "Quit",
-
   "recordingPathCopied": "Recording path copied to clipboard",
   "openFolderFailed": "Failed to open folder",
   "cleanupFailed": "Cleanup failed",
   "resetHotkeyDefault": "Reset Default ({key})",
-
   "vadTitle": "Smart Silence Detection",
   "vadDescription": "Automatically detect silence during recording and stop recording after the set duration.",
   "vadEnable": "Enable Smart Silence Detection",
   "vadSilenceThreshold": "Silence Threshold",
   "vadSilenceDuration": "Silence Wait Duration",
-
   "sceneModeTitle": "Scene Mode",
   "sceneModeDescription": "Select the current scene. AI will adjust text formatting style accordingly.",
   "sceneModeLabel": "Current Scene",
-
   "promptTemplates": "Templates",
   "promptCreateTemplate": "Create Template",
   "promptTemplateName": "Template Name",
@@ -379,11 +343,8 @@
   "promptBuiltinColloquialSummary": "Light correction while preserving natural spoken style",
   "promptBuiltinTranslateEnName": "Translate to English",
   "promptBuiltinTranslateEnSummary": "Translate input into natural and fluent English",
-  "promptBuiltinMeetingName": "Meeting Minutes",
-  "promptBuiltinMeetingSummary": "Organize into structured meeting-note bullet points",
   "promptSelectHint": "Select a template from the list to view details",
   "promptPreview": "Preview",
-
   "dictionarySettings": "Memory",
   "dictionaryDescription": "Set up correction and preservation rules to help AI output professional terms and fixed expressions more accurately.",
   "dictionaryAdd": "Add Rule",
@@ -412,16 +373,26 @@
   "dictionaryPageIndicator": "Page {current} / {total}",
   "@dictionaryPageIndicator": {
     "placeholders": {
-      "current": {"type": "int"},
-      "total": {"type": "int"}
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dictionaryPageSummary": "Showing {from} - {to} of {total}",
   "@dictionaryPageSummary": {
     "placeholders": {
-      "from": {"type": "int"},
-      "to": {"type": "int"},
-      "total": {"type": "int"}
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dictionaryEmpty": "Dictionary is empty",
@@ -431,28 +402,39 @@
   "dictionaryExportSuccess": "CSV exported to: {path}",
   "@dictionaryExportSuccess": {
     "placeholders": {
-      "path": {"type": "String"}
+      "path": {
+        "type": "String"
+      }
     }
   },
   "dictionaryExportWithExampleSuccess": "CSV exported to: {path}\\nExample file: {examplePath}\\nTo modify this file, please import it using the example format.",
   "@dictionaryExportWithExampleSuccess": {
     "placeholders": {
-      "path": {"type": "String"},
-      "examplePath": {"type": "String"}
+      "path": {
+        "type": "String"
+      },
+      "examplePath": {
+        "type": "String"
+      }
     }
   },
   "dictionaryExportFailed": "Failed to export CSV",
   "dictionaryImportSuccess": "Import completed: {imported} added, {skipped} skipped ({total} rows)",
   "@dictionaryImportSuccess": {
     "placeholders": {
-      "imported": {"type": "int"},
-      "skipped": {"type": "int"},
-      "total": {"type": "int"}
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dictionaryImportInvalidFormat": "Invalid CSV format: missing pinyinPattern column",
   "dictionaryImportFailed": "Failed to import CSV",
-
   "correctionEnabled": "Smart Correction",
   "correctionDescription": "Auto-correct homophones via pinyin matching, effective only when dictionary is non-empty",
   "retrospectiveCorrectionEnabled": "Retrospective Review",
@@ -477,13 +459,17 @@
   "contextCount": "{count} items",
   "@contextCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "contextSelectedCount": "{count} selected",
   "@contextSelectedCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "contextSelectAll": "Select all",
@@ -491,235 +477,120 @@
   "contextDeleteSelectedSuccess": "Deleted {count} context items",
   "@contextDeleteSelectedSuccess": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "contextContentEmpty": "Empty content",
   "contextAliasLabel": "Alias / Misheard: {value}",
   "@contextAliasLabel": {
     "placeholders": {
-      "value": {"type": "String"}
+      "value": {
+        "type": "String"
+      }
     }
   },
   "contextSourceLabel": "Source: {value}",
   "@contextSourceLabel": {
     "placeholders": {
-      "value": {"type": "String"}
+      "value": {
+        "type": "String"
+      }
     }
   },
   "contextDeleteSuccess": "Deleted {term}",
   "@contextDeleteSuccess": {
     "placeholders": {
-      "term": {"type": "String"}
+      "term": {
+        "type": "String"
+      }
     }
   },
   "contextPromoteSuccess": "Promoted {term} to dictionary",
   "@contextPromoteSuccess": {
     "placeholders": {
-      "term": {"type": "String"}
+      "term": {
+        "type": "String"
+      }
     }
   },
   "contextImportSuccess": "Import complete: context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}",
   "@contextImportSuccess": {
     "placeholders": {
-      "contextCount": {"type": "int"},
-      "correctionCount": {"type": "int"},
-      "preserveCount": {"type": "int"},
-      "referenceCount": {"type": "int"}
+      "contextCount": {
+        "type": "int"
+      },
+      "correctionCount": {
+        "type": "int"
+      },
+      "preserveCount": {
+        "type": "int"
+      },
+      "referenceCount": {
+        "type": "int"
+      }
     }
   },
   "contextImportPreviewSummary": "{fileCount} files, context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}, skipped {skippedCount}",
   "@contextImportPreviewSummary": {
     "placeholders": {
-      "fileCount": {"type": "int"},
-      "contextCount": {"type": "int"},
-      "correctionCount": {"type": "int"},
-      "preserveCount": {"type": "int"},
-      "referenceCount": {"type": "int"},
-      "skippedCount": {"type": "int"}
+      "fileCount": {
+        "type": "int"
+      },
+      "contextCount": {
+        "type": "int"
+      },
+      "correctionCount": {
+        "type": "int"
+      },
+      "preserveCount": {
+        "type": "int"
+      },
+      "referenceCount": {
+        "type": "int"
+      },
+      "skippedCount": {
+        "type": "int"
+      }
     }
   },
   "contextImportPreviewItemSummary": "Context {contextCount}, correction {correctionCount}, preserve {preserveCount}, reference {referenceCount}, skipped {skippedCount}",
   "@contextImportPreviewItemSummary": {
     "placeholders": {
-      "contextCount": {"type": "int"},
-      "correctionCount": {"type": "int"},
-      "preserveCount": {"type": "int"},
-      "referenceCount": {"type": "int"},
-      "skippedCount": {"type": "int"}
+      "contextCount": {
+        "type": "int"
+      },
+      "correctionCount": {
+        "type": "int"
+      },
+      "preserveCount": {
+        "type": "int"
+      },
+      "referenceCount": {
+        "type": "int"
+      },
+      "skippedCount": {
+        "type": "int"
+      }
     }
   },
   "pinyinPreview": "Pinyin",
   "pinyinOverride": "Pinyin Pattern (optional)",
   "pinyinOverrideHint": "E.g. fan ruan; supports pinyin-only matching, space-separated syllables",
   "pinyinReset": "Reset to auto pinyin",
-
-  "meetingMinutes": "Meeting Minutes",
-  "meetingNew": "New Meeting",
-  "meetingRecording": "Recording",
-  "meetingPaused": "Paused",
-  "meetingCompleted": "Completed",
-  "meetingEmpty": "No meeting minutes",
-  "meetingEmptyHint": "Click the button above to start a new meeting recording",
-  "meetingStarting": "Starting meeting...",
-  "meetingTitleHint": "Enter meeting title...",
-  "meetingPause": "Pause",
-  "meetingResume": "Resume",
-  "meetingStop": "Stop",
-  "meetingListening": "Listening...",
-  "meetingListeningHint": "Audio will be automatically segmented and transcribed",
-  "meetingTranscribing": "Transcribing",
-  "meetingEnhancing": "Enhancing text",
-  "meetingWaitingProcess": "Waiting to process",
-  "meetingPending": "Pending",
-  "meetingDone": "Done",
-  "meetingError": "Failed",
-  "meetingSegmentError": "Processing failed",
-  "meetingRetry": "Retry",
-  "meetingNoContent": "No transcription content",
-  "meetingProcessing": "Processing remaining segments...",
-  "meetingSegments": "Segments",
-  "meetingLongPressToEnd": "Long press to end meeting",
-  "meetingEndingConfirm": "Ending meeting...",
-  "meetingRecordingSegment": "Recording...",
-  "meetingFullTranscription": "Meeting Minutes",
-  "meetingStopConfirmTitle": "End Meeting",
-  "meetingStopConfirm": "Are you sure you want to end the current meeting recording? All recorded segments will be processed first.",
-  "meetingCancelConfirmTitle": "Cancel Meeting",
-  "meetingCancelConfirm": "Are you sure you want to cancel and discard the current meeting? This action cannot be undone.",
-  "meetingDeleteConfirmTitle": "Delete Meeting",
-  "meetingDeleteConfirm": "Are you sure you want to delete these meeting minutes? This action cannot be undone.",
-  "meetingDate": "Date",
-  "meetingDuration": "Duration",
-  "meetingTotalChars": "Total Characters",
-  "meetingTitle": "Meeting Title",
-  "meetingSaved": "Saved",
-  "meetingSummary": "Meeting Summary",
-  "meetingContent": "Meeting Content",
-  "meetingCopyAll": "Copy All",
-  "meetingExportText": "Export as Text",
-  "meetingExportMarkdown": "Export as Markdown",
-  "meetingExported": "Exported to clipboard",
-  "meetingEmptyContent": "Empty",
-  "meetingNotFound": "Meeting minutes not found",
-  "meetingOverlayStarting": "Meeting starting",
-  "meetingOverlayRecording": "Meeting recording",
-  "meetingOverlayPaused": "Meeting paused",
-  "meetingOverlayProcessing": "Meeting processing",
-  "meetingRecordingBanner": "Meeting recording in progress",
-  "meetingReturnToRecording": "Return to recording",
-  "meetingSegmentView": "Segments",
-  "meetingMergedNoteView": "Merged Notes",
-  "meetingLiveSummaryView": "Live Summary",
-  "meetingLiveSummaryWaiting": "Waiting for enough content to generate summary...",
-  "meetingFinalizing": "Finalizing",
-  "meetingSummaryUpdating": "Updating summary...",
-  "meetingStreamingMerge": "Merging...",
-  "meetingDashboardToday": "TODAY'S MEETINGS",
-  "meetingDashboardRecents": "RECENTS",
-  "meetingDashboardLive": "LIVE MEETING",
-  "meetingDashboardCancel": "CANCEL",
-  "meetingDashboardSaveNotes": "SAVE NOTES",
-  "meetingDetailTab": "Meeting Details",
-  "meetingSummaryTab": "Meeting Summary",
-  "meetingGeneratingSummary": "Generating meeting summary...",
-  "meetingNoSummary": "No meeting summary yet",
-  "meetingRegenerateSummary": "Regenerate",
-  "meetingUnifyRebuild": "Unify Rebuild",
-  "meetingUnifyRebuildTitle": "Unify Historical Meetings",
-  "meetingUnifyRebuildConfirm": "Meeting minutes and summaries will be rebuilt using the same rule as segment view (prefer enhanced text). Continue?",
-  "meetingUnifyRebuildRunning": "Unifying historical meetings...",
-  "meetingUnifyRebuildDone": "Unified rebuild complete: {count}",
-  "@meetingUnifyRebuildDone": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "meetingStatsSummary": "Total {totalCount} · Completed {completedCount}",
-  "@meetingStatsSummary": {
-    "placeholders": {
-      "totalCount": {
-        "type": "int"
-      },
-      "completedCount": {
-        "type": "int"
-      }
-    }
-  },
-  "meetingRecoverRecording": "Repair Recording",
-  "meetingRecoverRecordingSuccess": "Repaired {count} stuck recording session(s)",
-  "@meetingRecoverRecordingSuccess": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "meetingRecoverRecordingNone": "No stuck recording sessions found",
-  "meetingSearchHint": "Search title/summary/content",
-  "meetingManageGroups": "Manage Groups",
-  "meetingMoreActions": "More Actions",
-  "meetingMoveToGroup": "Move Group",
-  "meetingMoveToGroupTitle": "Move to Group",
-  "meetingCreateGroupAndMove": "Create Group and Move",
-  "meetingGroupManageTitle": "Group Management",
-  "meetingGroupManageEmptyHint": "No custom groups yet. Click the button below to create one.",
-  "meetingGroupClose": "Close",
-  "meetingGroupCreate": "Create Group",
-  "meetingGroupCreateTitle": "Create Group",
-  "meetingGroupNameHint": "Enter group name",
-  "meetingGroupRenameTitle": "Rename Group",
-  "meetingGroupRenameHint": "Enter new group name",
-  "meetingAllGroups": "All",
-  "meetingUngrouped": "Ungrouped",
-  "meetingStartFailed": "Failed to start meeting: {error}",
-  "@meetingStartFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "meetingStopFailed": "Failed to stop meeting: {error}",
-  "@meetingStopFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
-  "meetingMovedToFinalizing": "Meeting has entered {status}",
-  "@meetingMovedToFinalizing": {
-    "placeholders": {
-      "status": {
-        "type": "String"
-      }
-    }
-  },
-  "meetingStoppingPleaseWait": "Stopping meeting, please wait…",
-  "meetingStopping": "Stopping meeting…",
   "addToDictionary": "Add to Dictionary",
   "addedToDictionary": "Added to dictionary",
   "originalSttText": "Original speech-to-text",
-
   "home": "Home",
   "workspaceLabel": "Workspace",
   "settings": "Settings",
-
   "vendorLocalModel": "Local Model",
   "vendorCustom": "Custom",
   "localModelSttHint": "Local models run on-device via sherpa-onnx; just download the ONNX model files to use them.",
   "localSttTinyDesc": "Tiny (~75MB) - Fastest, suitable for daily use",
   "localSttBaseDesc": "Base (~142MB) - Balanced speed and accuracy",
   "localSttSmallDesc": "Small (~466MB) - Higher accuracy",
-  "localModelAiHint": "Local model calls llama.cpp directly via FFI. No internet required. Supports macOS and Windows.",
-  "localAiQ5Desc": "Qwen2.5 0.5B Q5_K_M (~400MB) - Recommended, balanced quality and speed",
-  "localAiQ4Desc": "Qwen2.5 0.5B Q4_K_M (~350MB) - Smaller and faster",
-  "localAiQwen35_2BDesc": "Qwen3.5 2B Q4_K_M (~1.5GB) - Lightweight next-gen, notable quality boost",
-  "localAiQwen35_4BDesc": "Qwen3.5 4B Q4_K_M (~2.7GB) - Recommended, balanced speed and quality",
-  "localAiQwen35_9BDesc": "Qwen3.5 9B Q4_K_M (~5.5GB) - High quality, 16GB+ RAM recommended",
   "download": "Download",
   "downloaded": "Downloaded",
   "customTemplateSummary": "Custom Template",

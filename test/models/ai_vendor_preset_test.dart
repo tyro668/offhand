@@ -9,9 +9,7 @@ void main() {
       expect(presets, isNotEmpty);
       for (final preset in presets) {
         expect(preset.name, isNotEmpty);
-        if (!preset.isLocal) {
-          expect(preset.baseUrl, isNotEmpty);
-        }
+        expect(preset.baseUrl, isNotEmpty);
         expect(preset.models, isNotEmpty);
       }
     });
@@ -126,7 +124,7 @@ void main() {
       expect(presets[0].defaultModelId, 'actual');
     });
 
-    test('fromPresetJsonList parses local model with empty baseUrl', () {
+    test('fromPresetJsonList filters out local model with empty baseUrl', () {
       final jsonList = [
         {
           'name': '本地模型',
@@ -140,10 +138,7 @@ void main() {
 
       final presets = AiVendorPreset.fromPresetJsonList(jsonList);
 
-      expect(presets.length, 1);
-      expect(presets[0].name, '本地模型');
-      expect(presets[0].isLocal, true);
-      expect(presets[0].baseUrl, '');
+      expect(presets, isEmpty);
     });
   });
 

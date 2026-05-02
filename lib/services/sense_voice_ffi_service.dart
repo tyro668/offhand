@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
+import 'local_asr_process_manager.dart';
 import 'log_service.dart';
 
 /// SenseVoice 模型描述（ONNX 格式，目录包含 model.int8.onnx + tokens.txt）
@@ -57,6 +58,23 @@ class SenseVoiceFfiService {
   SenseVoiceFfiService({required this.modelPath});
 
   static bool _bindingsInitialized = false;
+  static bool useFileLogging = true;
+
+  static Future<void> _logInfo(String tag, String message) async {
+    if (useFileLogging) {
+      await LogService.info(tag, message);
+    } else {
+      stderr.writeln('[INFO][$tag] $message');
+    }
+  }
+
+  static Future<void> _logError(String tag, String message) async {
+    if (useFileLogging) {
+      await LogService.error(tag, message);
+    } else {
+      stderr.writeln('[ERROR][$tag] $message');
+    }
+  }
 
   static Future<String> get _appDataDir async {
     final appDir = await getApplicationSupportDirectory();
@@ -270,8 +288,18 @@ class SenseVoiceFfiService {
   /// 使用 sherpa-onnx 进行语音转文字
   Future<String> transcribe(String audioPath, {String? prompt}) async {
     final modelDir = await _resolveModelDir();
+    return LocalAsrProcessManager.instance.transcribe(
+      modelDir: modelDir,
+      audioPath: audioPath,
+      prompt: prompt,
+    );
+  }
 
-    await LogService.info(
+  /// 在当前进程内执行 sherpa-onnx 推理。仅供 ASR worker 子进程调用。
+  Future<String> transcribeInProcess(String audioPath, {String? prompt}) async {
+    final modelDir = await _resolveModelDir();
+
+    await _logInfo(
       'SENSEVOICE',
       'transcribe (sherpa-onnx) modelDir=$modelDir audio=$audioPath prompt=${(prompt ?? '').trim().isNotEmpty}',
     );
@@ -305,7 +333,7 @@ class SenseVoiceFfiService {
       var samples = wavResult.$1;
       final fileSampleRate = wavResult.$2;
 
-      await LogService.info(
+      await _logInfo(
         'SENSEVOICE',
         'readWavDart done: samples=${samples.length}, sampleRate=$fileSampleRate',
       );
@@ -317,7 +345,7 @@ class SenseVoiceFfiService {
       // 如果采样率不是 16 kHz，进行重采样
       const targetRate = 16000;
       if (fileSampleRate != targetRate) {
-        await LogService.info(
+        await _logInfo(
           'SENSEVOICE',
           'resampling from $fileSampleRate Hz to $targetRate Hz',
         );
@@ -367,7 +395,7 @@ class SenseVoiceFfiService {
         throw SenseVoiceException('SenseVoice 返回空文本');
       }
 
-      await LogService.info(
+      await _logInfo(
         'SENSEVOICE',
         'transcribe result (lang=${result.lang}, emotion=${result.emotion}): '
             '${text.length > 100 ? text.substring(0, 100) : text}',
@@ -375,7 +403,7 @@ class SenseVoiceFfiService {
 
       return text;
     } catch (e) {
-      await LogService.error('SENSEVOICE', 'transcribe failed: $e');
+      await _logError('SENSEVOICE', 'transcribe failed: $e');
       if (e is SenseVoiceException) rethrow;
       throw SenseVoiceException('SenseVoice 转写失败: $e');
     }
@@ -432,7 +460,7 @@ class SenseVoiceFfiService {
           if (validBits > 0 && validBits <= 32) bitsPerSample = validBits;
         }
 
-        await LogService.info(
+        await _logInfo(
           'SENSEVOICE',
           'WAV fmt: format=$audioFormat ch=$numChannels '
               'rate=$sampleRate bits=$bitsPerSample',
@@ -539,6 +567,14 @@ class SenseVoiceFfiService {
   // ---- 状态检查 ----
 
   Future<SenseVoiceCheckResult> checkAvailability() async {
+    final modelDir = await _resolveModelDir();
+    return LocalAsrProcessManager.instance.checkAvailability(
+      modelDir: modelDir,
+    );
+  }
+
+  /// 在当前进程内检查 sherpa-onnx 和模型文件。仅供 ASR worker 子进程调用。
+  Future<SenseVoiceCheckResult> checkAvailabilityInProcess() async {
     try {
       final modelDir = await _resolveModelDir();
       final modelFile = p.join(modelDir, 'model.int8.onnx');
