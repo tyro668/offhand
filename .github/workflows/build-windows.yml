@@ -43,16 +43,6 @@ jobs:
         run: |
           & "$env:FLUTTER_BIN/flutter.bat" doctor -v
 
-      - name: Enable full local LLM for release build
-        shell: pwsh
-        run: |
-          Copy-Item -Force "full/local_llm_service.dart" "lib/services/local_llm_service.dart"
-          $content = Get-Content "pubspec.yaml" -Raw
-          if ($content -notmatch '(?m)^\s*llamadart:\s*') {
-            $content = $content -replace "(?m)^(\s*ffi:\s*\^2\.1\.0\s*)$", "$1`r`n  llamadart: ^0.6.2"
-            Set-Content "pubspec.yaml" -Value $content -NoNewline
-          }
-
       - name: Get dependencies
         shell: pwsh
         run: |

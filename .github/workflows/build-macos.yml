@@ -46,27 +46,6 @@ jobs:
         run: |
           "$FLUTTER_BIN/flutter" doctor -v
 
-      - name: Enable full local LLM for release build
-        run: |
-          cp full/local_llm_service.dart lib/services/local_llm_service.dart
-          if ! grep -qE '^\s*llamadart:' pubspec.yaml; then
-            python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("pubspec.yaml")
-          text = path.read_text(encoding="utf-8")
-          needle = "  ffi: ^2.1.0"
-          insert = "  llamadart: ^0.6.2"
-
-          if insert not in text:
-            if needle in text:
-              text = text.replace(needle, f"{needle}\n{insert}", 1)
-            else:
-              text += f"\n{insert}\n"
-            path.write_text(text, encoding="utf-8")
-          PY
-          fi
-
       - name: Get dependencies
         run: |
           "$FLUTTER_BIN/flutter" pub get
