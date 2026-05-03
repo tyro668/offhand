@@ -83,7 +83,7 @@ jobs:
           VERSION=${VERSION:-0.0.0}
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Package DMG
+      - name: Package macOS ZIP
         id: package
         run: |
           APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
@@ -102,22 +102,18 @@ jobs:
 
           APP_NAME="$(basename "$APP_PATH" .app)"
           VERSION="${{ steps.version.outputs.VERSION }}"
-          DMG_NAME="${APP_NAME}-macos-${VERSION}.dmg"
+          ZIP_NAME="${APP_NAME}-macos-${VERSION}.zip"
 
-          STAGE_DIR="$RUNNER_TEMP/dmg-stage"
-          rm -rf "$STAGE_DIR"
-          mkdir -p "$STAGE_DIR"
-          cp -R "$APP_PATH" "$STAGE_DIR/"
+          mkdir -p build
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build/$ZIP_NAME"
 
-          hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE_DIR" -ov -format UDZO "build/$DMG_NAME"
-
-          echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_OUTPUT"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-macos
-          path: build/${{ steps.package.outputs.DMG_NAME }}
+          path: build/${{ steps.package.outputs.ZIP_NAME }}
           retention-days: 7
 
   build-windows:
@@ -341,7 +337,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-assets/*.dmg
             release-assets/*.zip
           generate_release_notes: true
         env:

@@ -1,4 +1,4 @@
-name: Build macOS Installer
+name: Build macOS ZIP
 
 on:
   workflow_dispatch:    # 手动构建（发布由 unified workflow 处理）
@@ -87,7 +87,7 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
-      - name: Package DMG
+      - name: Package macOS ZIP
         id: package
         run: |
           APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
@@ -106,24 +106,20 @@ jobs:
 
           APP_NAME="$(basename "$APP_PATH" .app)"
           VERSION="${{ steps.version.outputs.VERSION }}"
-          DMG_NAME="${APP_NAME}-macos-${VERSION}.dmg"
+          ZIP_NAME="${APP_NAME}-macos-${VERSION}.zip"
 
-          STAGE_DIR="$RUNNER_TEMP/dmg-stage"
-          rm -rf "$STAGE_DIR"
-          mkdir -p "$STAGE_DIR"
-          cp -R "$APP_PATH" "$STAGE_DIR/"
+          mkdir -p build
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "build/$ZIP_NAME"
 
-          hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE_DIR" -ov -format UDZO "build/$DMG_NAME"
-
-          echo "DMG_NAME=$DMG_NAME" >> "$GITHUB_OUTPUT"
-          echo "DMG_PATH=build/$DMG_NAME" >> "$GITHUB_OUTPUT"
-          echo "Packaged: build/$DMG_NAME"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          echo "ZIP_PATH=build/$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          echo "Packaged: build/$ZIP_NAME"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: offhand-macos-${{ steps.version.outputs.VERSION }}
-          path: build/${{ steps.package.outputs.DMG_NAME }}
+          path: build/${{ steps.package.outputs.ZIP_NAME }}
           retention-days: 30
 
       - name: Check existing GitHub Release
@@ -155,7 +151,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') && steps.check_release.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: build/${{ steps.package.outputs.DMG_NAME }}
+          files: build/${{ steps.package.outputs.ZIP_NAME }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
