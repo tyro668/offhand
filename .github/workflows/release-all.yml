@@ -51,6 +51,10 @@ jobs:
         run: |
           "$FLUTTER_BIN/flutter" analyze --no-fatal-infos
 
+      - name: Use ad-hoc signing on CI
+        run: |
+          perl -0pi -e 's/CODE_SIGN_IDENTITY = "Offhand Local Signing";/CODE_SIGN_IDENTITY = "-";/g' macos/Runner.xcodeproj/project.pbxproj
+
       - name: Build macOS Release
         run: |
           "$FLUTTER_BIN/flutter" build macos --release
