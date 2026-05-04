@@ -8,15 +8,15 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
+import '../../l10n/memory_source_localizations.dart';
 import '../../models/dictionary_entry.dart';
 import '../../models/dictation_term_pending_candidate.dart';
+import '../../models/memory_item.dart';
 import '../../models/transcription.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/dictionary_entry_dialog.dart';
 import '../../widgets/modern_ui.dart';
-import 'context_page.dart';
-import 'entity_page.dart';
 
 class DictionaryPage extends StatefulWidget {
   const DictionaryPage({super.key});
@@ -33,9 +33,12 @@ class _DictionaryPageState extends State<DictionaryPage> {
   String? _selectedCategory;
   final TextEditingController _searchCtrl = TextEditingController();
   final TextEditingController _pendingSearchCtrl = TextEditingController();
+  final TextEditingController _memorySearchCtrl = TextEditingController();
   _EntryStatusFilter _statusFilter = _EntryStatusFilter.all;
   _PendingCandidateSort _pendingCandidateSort = _PendingCandidateSort.recent;
   _PendingCandidateFilter _pendingCandidateFilter = _PendingCandidateFilter.all;
+  _MemoryStatusFilter _memoryStatusFilter = _MemoryStatusFilter.all;
+  _MemoryKindFilter _memoryKindFilter = _MemoryKindFilter.all;
   final Set<String> _selectedPendingCandidateIds = {};
   int _rowsPerPage = 100;
   int _currentPage = 0;
@@ -46,156 +49,272 @@ class _DictionaryPageState extends State<DictionaryPage> {
   void dispose() {
     _searchCtrl.dispose();
     _pendingSearchCtrl.dispose();
+    _memorySearchCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final recording = context.watch<RecordingProvider>();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: _buildMemoryLibraryTab(settings),
+    );
+  }
+
+  Widget _buildMemoryLibraryTab(SettingsProvider settings) {
     final l10n = AppLocalizations.of(context)!;
-    final allEntries = settings.dictionaryEntries;
-    final pendingCandidates = List<DictationTermPendingCandidate>.from(
-      settings.dictationTermPendingCandidates,
-    );
-    final history = recording.history;
-    final categories = settings.dictionaryCategories;
-    final hasHistoryCorrectionEntries = allEntries.any(
-      (entry) => entry.source == DictionaryEntrySource.historyEdit,
-    );
-    final search = _searchCtrl.text.trim().toLowerCase();
-    final pendingSearch = _pendingSearchCtrl.text.trim().toLowerCase();
+    final search = _memorySearchCtrl.text.trim().toLowerCase();
+    final allMemories = settings.adaptiveMemoryItems;
+    final memories =
+        allMemories
+            .where((item) {
+              if (_memoryStatusFilter.status != null &&
+                  item.status != _memoryStatusFilter.status) {
+                return false;
+              }
+              if (_memoryKindFilter.kind != null &&
+                  item.kind != _memoryKindFilter.kind) {
+                return false;
+              }
+              if (search.isEmpty) return true;
+              final haystack = [
+                item.original,
+                item.canonical,
+                item.aliases.join(' '),
+                item.category ?? '',
+                item.source,
+                l10n.memorySourceDisplayName(item.source),
+                item.content ?? '',
+              ].join(' ').toLowerCase();
+              return haystack.contains(search);
+            })
+            .toList(growable: false)
+          ..sort((a, b) {
+            final byStatus = _memoryStatusRank(
+              a.status,
+            ).compareTo(_memoryStatusRank(b.status));
+            if (byStatus != 0) return byStatus;
+            return b.updatedAt.compareTo(a.updatedAt);
+          });
 
-    final entries = allEntries.where((entry) {
-      if (_selectedCategory == _historyCorrectionCategory &&
-          entry.source != DictionaryEntrySource.historyEdit) {
-        return false;
-      }
-      if (_selectedCategory != null &&
-          _selectedCategory != _historyCorrectionCategory &&
-          entry.category != _selectedCategory) {
-        return false;
-      }
-      if (_statusFilter == _EntryStatusFilter.enabledOnly && !entry.enabled) {
-        return false;
-      }
-      if (_statusFilter == _EntryStatusFilter.disabledOnly && entry.enabled) {
-        return false;
-      }
-      if (search.isEmpty) return true;
-      final inOriginal = entry.original.toLowerCase().contains(search);
-      final inCorrected = (entry.corrected ?? '').toLowerCase().contains(
-        search,
-      );
-      final inCategory = (entry.category ?? '').toLowerCase().contains(search);
-      final inSource =
-          entry.source == DictionaryEntrySource.historyEdit &&
-          _historyCorrectionCategory.contains(search);
-      final inPinyin = entry.pinyinNormalized.toLowerCase().contains(search);
-      return inOriginal || inCorrected || inCategory || inSource || inPinyin;
-    }).toList();
+    final pendingCount = allMemories
+        .where((item) => item.status == MemoryItemStatus.pending)
+        .length;
+    final weakCount = allMemories
+        .where((item) => item.status == MemoryItemStatus.weakActive)
+        .length;
+    final activeCount = allMemories
+        .where((item) => item.status == MemoryItemStatus.active)
+        .length;
+    final suppressedCount = allMemories
+        .where((item) => item.status == MemoryItemStatus.suppressed)
+        .length;
+    final highConfidenceCount = allMemories
+        .where(
+          (item) =>
+              item.status == MemoryItemStatus.weakActive &&
+              item.stats.evidenceCount >= 3 &&
+              item.stats.negativeCount == 0 &&
+              item.confidence >= 0.8,
+        )
+        .length;
 
-    entries.sort((a, b) {
-      if (a.enabled != b.enabled) {
-        return a.enabled ? -1 : 1;
-      }
-      return b.createdAt.compareTo(a.createdAt);
-    });
-    pendingCandidates.removeWhere(
-      (candidate) => !_matchesPendingCandidate(candidate, pendingSearch),
-    );
-    pendingCandidates.removeWhere(
-      (candidate) => !_matchesPendingCandidateFilter(candidate),
-    );
-    _sortPendingCandidates(pendingCandidates);
-    _selectedPendingCandidateIds.removeWhere(
-      (id) => !pendingCandidates.any((candidate) => candidate.id == id),
-    );
-
-    final enabledCount = allEntries.where((e) => e.enabled).length;
-    final disabledCount = allEntries.length - enabledCount;
-
-    final totalPages = entries.isEmpty
-        ? 1
-        : ((entries.length - 1) ~/ _rowsPerPage) + 1;
-    if (_currentPage >= totalPages) {
-      _currentPage = totalPages - 1;
-    }
-    final pageStart = _currentPage * _rowsPerPage;
-    final pageEntries = entries
-        .skip(pageStart)
-        .take(_rowsPerPage)
-        .toList(growable: false);
-
-    return DefaultTabController(
-      length: 3,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: _cs.primary.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _cs.primary.withValues(alpha: 0.08)),
-              ),
-              child: TabBar(
-                tabs: [
-                  Tab(text: l10n.dictionarySettings),
-                  Tab(text: l10n.contextTab),
-                  const Tab(text: '实体'),
-                ],
-                dividerColor: Colors.transparent,
-                labelColor: _cs.primary,
-                unselectedLabelColor: _cs.onSurfaceVariant,
-                labelStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicator: BoxDecoration(
-                  color: _cs.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _cs.primary.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ModernSurfaceCard(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 760;
+                  final searchBox = SizedBox(
+                    height: 36,
+                    child: TextField(
+                      controller: _memorySearchCtrl,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: '搜索统一记忆',
+                        hintStyle: TextStyle(fontSize: 13, color: _cs.outline),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          size: 18,
+                          color: _cs.outline,
+                        ),
+                        suffixIcon: _memorySearchCtrl.text.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () {
+                                  _memorySearchCtrl.clear();
+                                  setState(() {});
+                                },
+                                icon: Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: _cs.outline,
+                                ),
+                                padding: EdgeInsets.zero,
+                              ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: _cs.outlineVariant),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: _cs.outlineVariant),
+                        ),
+                        isDense: true,
+                      ),
                     ),
-                  ],
-                ),
+                  );
+                  final controls = Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _buildDropdownFilter<_MemoryStatusFilter>(
+                        value: _memoryStatusFilter,
+                        items: _MemoryStatusFilter.values
+                            .map((filter) => (filter, filter.label))
+                            .toList(growable: false),
+                        onChanged: (value) {
+                          setState(() => _memoryStatusFilter = value);
+                        },
+                      ),
+                      _buildDropdownFilter<_MemoryKindFilter>(
+                        value: _memoryKindFilter,
+                        items: _MemoryKindFilter.values
+                            .map((filter) => (filter, filter.label))
+                            .toList(growable: false),
+                        onChanged: (value) {
+                          setState(() => _memoryKindFilter = value);
+                        },
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _handleAddMemoryItem(settings),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('添加记忆'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+
+                  if (compact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        searchBox,
+                        const SizedBox(height: 8),
+                        controls,
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: searchBox),
+                      const SizedBox(width: 12),
+                      controls,
+                    ],
+                  );
+                },
               ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: TabBarView(
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _buildDictionaryTab(
-                    settings: settings,
-                    recording: recording,
-                    l10n: l10n,
-                    allEntries: allEntries,
-                    pendingCandidates: pendingCandidates,
-                    history: history,
-                    categories: categories,
-                    hasHistoryCorrectionEntries: hasHistoryCorrectionEntries,
-                    entries: entries,
-                    enabledCount: enabledCount,
-                    disabledCount: disabledCount,
-                    pageStart: pageStart,
-                    pageEntries: pageEntries,
-                    totalPages: totalPages,
+                  _buildMemorySummaryTile(
+                    '全部',
+                    allMemories.length,
+                    _cs.primary,
                   ),
-                  const ContextPage(embedded: true),
-                  const EntityPage(embedded: true),
+                  _buildMemorySummaryTile('待确认', pendingCount, _cs.secondary),
+                  _buildMemorySummaryTile('弱激活', weakCount, Colors.orange),
+                  _buildMemorySummaryTile('已启用', activeCount, Colors.teal),
+                  _buildMemorySummaryTile('已抑制', suppressedCount, _cs.error),
+                  _buildMemorySummaryTile(
+                    '高可信建议',
+                    highConfidenceCount,
+                    _cs.tertiary,
+                  ),
                 ],
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ModernSurfaceCard(
+            padding: EdgeInsets.zero,
+            child: memories.isEmpty
+                ? _buildMemoryEmptyState()
+                : ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: memories.length,
+                    separatorBuilder: (_, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      return _buildMemoryItemRow(settings, memories[index]);
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMemorySummaryTile(String label, int value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontSize: 11, color: _cs.outline)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMemoryEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.psychology_alt_outlined,
+              size: 40,
+              color: _cs.onSurfaceVariant,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '暂无匹配的统一记忆',
+              style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -203,6 +322,152 @@ class _DictionaryPageState extends State<DictionaryPage> {
     );
   }
 
+  Widget _buildMemoryItemRow(SettingsProvider settings, MemoryItem item) {
+    final l10n = AppLocalizations.of(context)!;
+    final statusColor = _memoryStatusColor(item.status);
+    final title = _memoryTitle(item);
+    final subtitle = _memorySubtitle(item);
+    final canAccept =
+        item.status == MemoryItemStatus.pending ||
+        item.status == MemoryItemStatus.weakActive;
+    final canSuppress =
+        item.status != MemoryItemStatus.suppressed &&
+        item.status != MemoryItemStatus.archived;
+    final canArchive = item.status != MemoryItemStatus.archived;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.7)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _memoryKindIcon(item.kind),
+              size: 16,
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _cs.onSurface,
+                      ),
+                    ),
+                    _buildMetaTag(_memoryStatusLabel(item.status), statusColor),
+                    _buildMetaTag(_memoryKindLabel(item.kind), _cs.primary),
+                    _buildMetaTag(_memoryScopeLabel(item.scope), _cs.secondary),
+                    if (item.stats.rejectedCount > 0 ||
+                        item.status == MemoryItemStatus.suppressed)
+                      _buildMetaTag('被拒绝过', _cs.error),
+                    if (item.stats.evidenceCount >= 3 &&
+                        item.stats.negativeCount == 0 &&
+                        item.confidence >= 0.8)
+                      _buildMetaTag('高可信', _cs.tertiary),
+                  ],
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: _cs.outline),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      '证据 ${item.stats.evidenceCount}',
+                      style: TextStyle(fontSize: 11, color: _cs.outline),
+                    ),
+                    Text(
+                      '${l10n.prompt} ${item.stats.promptInjectionCount}',
+                      style: TextStyle(fontSize: 11, color: _cs.outline),
+                    ),
+                    Text(
+                      '纠错命中 ${item.stats.correctionHitCount}',
+                      style: TextStyle(fontSize: 11, color: _cs.outline),
+                    ),
+                    Text(
+                      '最近 ${_formatMemoryTime(item.lastSeenAt)}',
+                      style: TextStyle(fontSize: 11, color: _cs.outline),
+                    ),
+                    if (item.source.isNotEmpty)
+                      Text(
+                        l10n.memorySourceLabel(
+                          l10n.memorySourceDisplayName(item.source),
+                        ),
+                        style: TextStyle(fontSize: 11, color: _cs.outline),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Wrap(
+            spacing: 4,
+            children: [
+              if (canAccept)
+                IconButton(
+                  onPressed: () => _handleAcceptMemoryItem(settings, item),
+                  icon: Icon(
+                    Icons.check_circle_outline,
+                    size: 18,
+                    color: Colors.teal.shade600,
+                  ),
+                  tooltip: '确认启用',
+                ),
+              if (canSuppress)
+                IconButton(
+                  onPressed: () => _handleSuppressMemoryItem(settings, item),
+                  icon: Icon(Icons.block_outlined, size: 18, color: _cs.error),
+                  tooltip: '忽略 90 天',
+                ),
+              if (canArchive)
+                IconButton(
+                  onPressed: () => _handleArchiveMemoryItem(settings, item),
+                  icon: Icon(
+                    Icons.archive_outlined,
+                    size: 18,
+                    color: _cs.onSurfaceVariant,
+                  ),
+                  tooltip: '归档',
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _buildDictionaryTab({
     required SettingsProvider settings,
     required RecordingProvider recording,
@@ -1693,6 +1958,242 @@ class _DictionaryPageState extends State<DictionaryPage> {
     recording?.applySessionGlossaryOverride(entry.original, corrected);
   }
 
+  Future<void> _handleAddMemoryItem(SettingsProvider settings) async {
+    final draft = await _showAddMemoryDialog();
+    if (!mounted || draft == null) return;
+    try {
+      final created = await settings.addManualMemoryItem(
+        kind: draft.kind,
+        original: draft.original,
+        canonical: draft.canonical,
+        aliases: draft.aliases,
+        content: draft.content,
+        category: draft.category,
+        status: draft.status,
+      );
+      if (!mounted) return;
+      if (created.status == MemoryItemStatus.active &&
+          created.kind == MemoryItemKind.correction &&
+          created.original.trim().isNotEmpty &&
+          created.canonical.trim().isNotEmpty) {
+        final recording = Provider.of<RecordingProvider?>(
+          context,
+          listen: false,
+        );
+        recording?.applySessionGlossaryOverride(
+          created.original,
+          created.canonical,
+        );
+      }
+      _showSnackBar('已添加记忆: ${_memoryTitle(created)}');
+    } on ArgumentError catch (e) {
+      if (!mounted) return;
+      _showSnackBar(e.message?.toString() ?? '添加失败', isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      _showSnackBar('添加记忆失败', isError: true);
+    }
+  }
+
+  Future<_MemoryDraft?> _showAddMemoryDialog() async {
+    return showDialog<_MemoryDraft>(
+      context: context,
+      builder: (_) => _AddMemoryDialog(
+        memoryKindLabel: _memoryKindLabel,
+        canonicalFieldLabel: _canonicalFieldLabel,
+        canonicalFieldHint: _canonicalFieldHint,
+        parseAliases: _parseAliases,
+        validateDraft: _validateMemoryDraft,
+      ),
+    );
+  }
+
+  String? _validateMemoryDraft(_MemoryDraft draft) {
+    if (draft.kind == MemoryItemKind.correction) {
+      if (draft.original.isEmpty || draft.canonical.isEmpty) {
+        return '纠错记忆需要填写常错词和正确写法';
+      }
+      if (draft.original == draft.canonical) {
+        return '常错词和正确写法不能相同';
+      }
+    }
+    if (draft.kind == MemoryItemKind.preserve && draft.canonical.isEmpty) {
+      return '保留记忆需要填写词语或句子';
+    }
+    if (draft.kind == MemoryItemKind.entity && draft.canonical.isEmpty) {
+      return '实体记忆需要填写名称';
+    }
+    if (draft.kind == MemoryItemKind.reference &&
+        draft.canonical.isEmpty &&
+        draft.content.isEmpty) {
+      return '参考记忆需要填写标题或参考内容';
+    }
+    return null;
+  }
+
+  List<String> _parseAliases(String raw) {
+    return raw
+        .split(RegExp(r'[,，、\n]'))
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  String _canonicalFieldLabel(MemoryItemKind kind) {
+    return switch (kind) {
+      MemoryItemKind.correction => '正确写法',
+      MemoryItemKind.preserve => '需要保留的词语或句子',
+      MemoryItemKind.entity => '实体名称',
+      MemoryItemKind.reference => '标题',
+    };
+  }
+
+  String _canonicalFieldHint(MemoryItemKind kind) {
+    return switch (kind) {
+      MemoryItemKind.correction => '例如：帆软',
+      MemoryItemKind.preserve => '例如：FineBI 或一整句固定写法',
+      MemoryItemKind.entity => '例如：张三丰、某公司、某项目',
+      MemoryItemKind.reference => '例如：项目背景',
+    };
+  }
+
+  Future<void> _handleAcceptMemoryItem(
+    SettingsProvider settings,
+    MemoryItem item,
+  ) async {
+    final accepted = await settings.acceptMemoryItem(item.id);
+    if (accepted == null) return;
+    if (!mounted) return;
+    if (accepted.kind == MemoryItemKind.correction &&
+        accepted.original.trim().isNotEmpty &&
+        accepted.canonical.trim().isNotEmpty) {
+      final recording = Provider.of<RecordingProvider?>(context, listen: false);
+      recording?.applySessionGlossaryOverride(
+        accepted.original,
+        accepted.canonical,
+      );
+    }
+    _showSnackBar('已启用记忆: ${_memoryTitle(accepted)}');
+  }
+
+  Future<void> _handleSuppressMemoryItem(
+    SettingsProvider settings,
+    MemoryItem item,
+  ) async {
+    final suppressed = await settings.suppressMemoryItem(item.id);
+    if (suppressed == null) return;
+    _showSnackBar('已忽略 90 天: ${_memoryTitle(suppressed)}');
+  }
+
+  Future<void> _handleArchiveMemoryItem(
+    SettingsProvider settings,
+    MemoryItem item,
+  ) async {
+    final archived = await settings.archiveMemoryItem(item.id);
+    if (archived == null) return;
+    _showSnackBar('已归档记忆: ${_memoryTitle(archived)}');
+  }
+
+  String _memoryTitle(MemoryItem item) {
+    if (item.kind == MemoryItemKind.correction &&
+        item.original.trim().isNotEmpty &&
+        item.canonical.trim().isNotEmpty) {
+      return '${item.original} -> ${item.canonical}';
+    }
+    if (item.kind == MemoryItemKind.preserve &&
+        item.canonical.trim().isNotEmpty) {
+      return item.canonical;
+    }
+    if (item.kind == MemoryItemKind.entity &&
+        item.canonical.trim().isNotEmpty) {
+      return item.canonical;
+    }
+    if (item.displayText.trim().isNotEmpty) return item.displayText;
+    return '未命名记忆';
+  }
+
+  String _memorySubtitle(MemoryItem item) {
+    final parts = <String>[];
+    if (item.aliases.isNotEmpty) {
+      parts.add('别名 ${item.aliases.take(4).join('、')}');
+    }
+    if (item.category != null && item.category!.isNotEmpty) {
+      parts.add('分类 ${item.category}');
+    }
+    if (item.content != null && item.content!.trim().isNotEmpty) {
+      final content = item.content!.replaceAll(RegExp(r'\s+'), ' ').trim();
+      parts.add(
+        content.length > 80 ? '${content.substring(0, 80)}...' : content,
+      );
+    }
+    return parts.join(' · ');
+  }
+
+  IconData _memoryKindIcon(MemoryItemKind kind) {
+    return switch (kind) {
+      MemoryItemKind.correction => Icons.auto_fix_high_outlined,
+      MemoryItemKind.preserve => Icons.bookmark_border_rounded,
+      MemoryItemKind.entity => Icons.badge_outlined,
+      MemoryItemKind.reference => Icons.article_outlined,
+    };
+  }
+
+  String _memoryKindLabel(MemoryItemKind kind) {
+    return switch (kind) {
+      MemoryItemKind.correction => '纠错',
+      MemoryItemKind.preserve => '保留',
+      MemoryItemKind.entity => '实体',
+      MemoryItemKind.reference => '参考',
+    };
+  }
+
+  String _memoryStatusLabel(MemoryItemStatus status) {
+    return switch (status) {
+      MemoryItemStatus.pending => '待确认',
+      MemoryItemStatus.weakActive => '弱激活',
+      MemoryItemStatus.active => '已启用',
+      MemoryItemStatus.suppressed => '已抑制',
+      MemoryItemStatus.archived => '已归档',
+    };
+  }
+
+  Color _memoryStatusColor(MemoryItemStatus status) {
+    return switch (status) {
+      MemoryItemStatus.pending => _cs.secondary,
+      MemoryItemStatus.weakActive => Colors.orange,
+      MemoryItemStatus.active => Colors.teal,
+      MemoryItemStatus.suppressed => _cs.error,
+      MemoryItemStatus.archived => _cs.outline,
+    };
+  }
+
+  String _memoryScopeLabel(MemoryItemScope scope) {
+    return switch (scope) {
+      MemoryItemScope.session => '会话',
+      MemoryItemScope.user => '用户',
+      MemoryItemScope.imported => '导入',
+    };
+  }
+
+  int _memoryStatusRank(MemoryItemStatus status) {
+    return switch (status) {
+      MemoryItemStatus.pending => 0,
+      MemoryItemStatus.weakActive => 1,
+      MemoryItemStatus.active => 2,
+      MemoryItemStatus.suppressed => 3,
+      MemoryItemStatus.archived => 4,
+    };
+  }
+
+  String _formatMemoryTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return '刚刚';
+    if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
+    if (diff.inDays < 1) return '${diff.inHours} 小时前';
+    if (diff.inDays < 30) return '${diff.inDays} 天前';
+    return DateFormat('yyyy/M/d').format(dt);
+  }
+
   Future<void> _handleExportCsv(
     SettingsProvider settings,
     AppLocalizations l10n,
@@ -1800,6 +2301,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
     });
   }
 
+  // ignore: unused_element
   void _sortPendingCandidates(List<DictationTermPendingCandidate> candidates) {
     candidates.sort((a, b) {
       switch (_pendingCandidateSort) {
@@ -1817,6 +2319,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
     });
   }
 
+  // ignore: unused_element
   bool _matchesPendingCandidate(
     DictationTermPendingCandidate candidate,
     String pendingSearch,
@@ -1827,6 +2330,7 @@ class _DictionaryPageState extends State<DictionaryPage> {
         (candidate.category ?? '').toLowerCase().contains(pendingSearch);
   }
 
+  // ignore: unused_element
   bool _matchesPendingCandidateFilter(DictationTermPendingCandidate candidate) {
     switch (_pendingCandidateFilter) {
       case _PendingCandidateFilter.all:
@@ -2069,4 +2573,255 @@ enum _PendingCandidateFilter {
   const _PendingCandidateFilter(this.label);
 
   final String label;
+}
+
+enum _MemoryStatusFilter {
+  all('全部状态', null),
+  pending('待确认', MemoryItemStatus.pending),
+  weakActive('弱激活', MemoryItemStatus.weakActive),
+  active('已启用', MemoryItemStatus.active),
+  suppressed('已抑制', MemoryItemStatus.suppressed),
+  archived('已归档', MemoryItemStatus.archived);
+
+  const _MemoryStatusFilter(this.label, this.status);
+
+  final String label;
+  final MemoryItemStatus? status;
+}
+
+enum _MemoryKindFilter {
+  all('全部类型', null),
+  correction('纠错', MemoryItemKind.correction),
+  preserve('保留', MemoryItemKind.preserve),
+  entity('实体', MemoryItemKind.entity),
+  reference('参考', MemoryItemKind.reference);
+
+  const _MemoryKindFilter(this.label, this.kind);
+
+  final String label;
+  final MemoryItemKind? kind;
+}
+
+class _MemoryDraft {
+  final MemoryItemKind kind;
+  final MemoryItemStatus status;
+  final String original;
+  final String canonical;
+  final List<String> aliases;
+  final String content;
+  final String category;
+
+  const _MemoryDraft({
+    required this.kind,
+    required this.status,
+    required this.original,
+    required this.canonical,
+    required this.aliases,
+    required this.content,
+    required this.category,
+  });
+}
+
+class _AddMemoryDialog extends StatefulWidget {
+  final String Function(MemoryItemKind kind) memoryKindLabel;
+  final String Function(MemoryItemKind kind) canonicalFieldLabel;
+  final String Function(MemoryItemKind kind) canonicalFieldHint;
+  final List<String> Function(String raw) parseAliases;
+  final String? Function(_MemoryDraft draft) validateDraft;
+
+  const _AddMemoryDialog({
+    required this.memoryKindLabel,
+    required this.canonicalFieldLabel,
+    required this.canonicalFieldHint,
+    required this.parseAliases,
+    required this.validateDraft,
+  });
+
+  @override
+  State<_AddMemoryDialog> createState() => _AddMemoryDialogState();
+}
+
+class _AddMemoryDialogState extends State<_AddMemoryDialog> {
+  final _originalCtrl = TextEditingController();
+  final _canonicalCtrl = TextEditingController();
+  final _aliasesCtrl = TextEditingController();
+  final _contentCtrl = TextEditingController();
+  final _categoryCtrl = TextEditingController();
+
+  MemoryItemKind _kind = MemoryItemKind.correction;
+  MemoryItemStatus _status = MemoryItemStatus.active;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _originalCtrl.dispose();
+    _canonicalCtrl.dispose();
+    _aliasesCtrl.dispose();
+    _contentCtrl.dispose();
+    _categoryCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showOriginal = _kind == MemoryItemKind.correction;
+    final showCanonical = _kind != MemoryItemKind.reference;
+    final showAliases =
+        _kind == MemoryItemKind.correction || _kind == MemoryItemKind.entity;
+    final showContent = _kind == MemoryItemKind.reference;
+
+    return AlertDialog(
+      title: const Text('添加记忆'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<MemoryItemKind>(
+                initialValue: _kind,
+                decoration: const InputDecoration(
+                  labelText: '类型',
+                  border: OutlineInputBorder(),
+                ),
+                items: MemoryItemKind.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(widget.memoryKindLabel(value)),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _kind = value;
+                    _errorText = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              if (showOriginal) ...[
+                TextField(
+                  controller: _originalCtrl,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: '常错词或触发表达',
+                    hintText: '例如：反软',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (showCanonical) ...[
+                TextField(
+                  controller: _canonicalCtrl,
+                  autofocus: !showOriginal,
+                  decoration: InputDecoration(
+                    labelText: widget.canonicalFieldLabel(_kind),
+                    hintText: widget.canonicalFieldHint(_kind),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (showContent) ...[
+                TextField(
+                  controller: _canonicalCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '标题（可选）',
+                    hintText: '例如：项目背景',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _contentCtrl,
+                  autofocus: true,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: '参考句子或上下文',
+                    hintText: '输入希望后续听写参考的一句话或一段上下文',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (showAliases) ...[
+                TextField(
+                  controller: _aliasesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '别名或其他误识别（可选）',
+                    hintText: '多个用逗号分隔',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              TextField(
+                controller: _categoryCtrl,
+                decoration: const InputDecoration(
+                  labelText: '分类（可选）',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('立即启用'),
+                subtitle: const Text('启用后会参与后续听写提示或纠错参考'),
+                value: _status == MemoryItemStatus.active,
+                onChanged: (value) {
+                  setState(() {
+                    _status = value
+                        ? MemoryItemStatus.active
+                        : MemoryItemStatus.pending;
+                  });
+                },
+              ),
+              if (_errorText != null) ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _errorText!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('添加')),
+      ],
+    );
+  }
+
+  void _submit() {
+    final draft = _MemoryDraft(
+      kind: _kind,
+      status: _status,
+      original: _originalCtrl.text.trim(),
+      canonical: _canonicalCtrl.text.trim(),
+      aliases: widget.parseAliases(_aliasesCtrl.text),
+      content: _contentCtrl.text.trim(),
+      category: _categoryCtrl.text.trim(),
+    );
+    final validation = widget.validateDraft(draft);
+    if (validation != null) {
+      setState(() => _errorText = validation);
+      return;
+    }
+    Navigator.pop(context, draft);
+  }
 }

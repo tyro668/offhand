@@ -3,6 +3,7 @@ import '../models/entity_alias.dart';
 import '../models/entity_memory.dart';
 import '../models/entity_prompt_bundle.dart';
 import '../models/entity_relation.dart';
+import '../models/memory_item.dart';
 import '../models/term_context_entry.dart';
 import '../models/term_prompt_bundle.dart';
 import '../models/transcription.dart';
@@ -31,6 +32,7 @@ class TermPromptBuilder {
     List<EntityMemory> entityMemories = const [],
     List<EntityAlias> entityAliases = const [],
     List<EntityRelation> entityRelations = const [],
+    List<MemoryItem> memoryItems = const [],
     int maxTerms = TermRecallService.defaultMaxTerms,
   }) {
     final contextDocuments = _selectContextDocuments(termContextEntries);
@@ -42,6 +44,24 @@ class TermPromptBuilder {
       termContextEntries: termContextEntries,
       maxTerms: maxTerms,
     );
+    final promptMemoryItems = _promptEligibleMemoryItems(memoryItems);
+    final activeMemoryTerms = _activeMemoryPreferredTerms(promptMemoryItems);
+    final activeMemoryReferences = _activeMemoryReferences(promptMemoryItems);
+    final includedMemoryItemIds = promptMemoryItems
+        .map((item) => item.id)
+        .toList(growable: false);
+    final includedWeakMemoryItemIds = memoryItems
+        .where(
+          (item) =>
+              item.status == MemoryItemStatus.weakActive &&
+              item.kind == MemoryItemKind.correction &&
+              item.isCorrectionEligible &&
+              item.original.trim().isNotEmpty &&
+              item.canonical.trim().isNotEmpty &&
+              item.original.trim() != item.canonical.trim(),
+        )
+        .map((item) => item.id)
+        .toList(growable: false);
 
     final entityBundle = entityRecallService.buildForStt(
       currentText: currentText,
@@ -56,6 +76,8 @@ class TermPromptBuilder {
     );
 
     if (preferredTerms.isEmpty &&
+        activeMemoryTerms.isEmpty &&
+        activeMemoryReferences.isEmpty &&
         contextDocuments.isEmpty &&
         !entityBundle.hasPromptData) {
       return const TermPromptBundle();
@@ -63,12 +85,14 @@ class TermPromptBuilder {
 
     final mergedPreferredTerms = {
       ...preferredTerms,
+      ...activeMemoryTerms,
       ...entityBundle.entities.map((e) => e.memory.canonicalName),
     }.toList(growable: false);
     final preserveTerms = mergedPreferredTerms.toList(growable: false);
     final correctionReferences = _buildCorrectionReferences(
       dictionaryEntries,
       sessionGlossary,
+      memoryItems,
     );
 
     final prompt = StringBuffer()
@@ -88,6 +112,13 @@ class TermPromptBuilder {
         prompt.writeln(_truncateContext(entry.content ?? ''));
       }
     }
+    if (activeMemoryReferences.isNotEmpty) {
+      prompt.writeln('参考以下记忆片段：');
+      for (final item in activeMemoryReferences.take(3)) {
+        prompt.writeln('[${item.displayText}]');
+        prompt.writeln(_truncateContext(item.content ?? item.displayText));
+      }
+    }
     if (entityBundle.sttSection.trim().isNotEmpty) {
       prompt.writeln(entityBundle.sttSection.trim());
     }
@@ -96,6 +127,7 @@ class TermPromptBuilder {
       preferredTerms: mergedPreferredTerms,
       correctionReferences: correctionReferences,
       contextDocuments: contextDocuments,
+      memoryReferences: activeMemoryReferences,
       entityBundle: entityBundle,
     );
 
@@ -105,6 +137,8 @@ class TermPromptBuilder {
       preferredTerms: mergedPreferredTerms,
       preserveTerms: preserveTerms,
       correctionReferences: correctionReferences,
+      includedMemoryItemIds: includedMemoryItemIds,
+      includedWeakMemoryItemIds: includedWeakMemoryItemIds,
       entityCorrectionSection: entityBundle.correctionEntitySection,
       entityRelationSection: entityBundle.correctionRelationSection,
     );
@@ -129,6 +163,7 @@ class TermPromptBuilder {
     required List<String> preferredTerms,
     required List<String> correctionReferences,
     required List<TermContextEntry> contextDocuments,
+    required List<MemoryItem> memoryReferences,
     required EntityPromptBundle entityBundle,
   }) {
     final buf = StringBuffer();
@@ -165,6 +200,18 @@ class TermPromptBuilder {
       }
     }
 
+    if (memoryReferences.isNotEmpty) {
+      if (buf.isEmpty) {
+        buf.writeln();
+        buf.writeln('【听写记忆参考】');
+      }
+      buf.writeln('可参考以下手动记忆片段：');
+      for (final item in memoryReferences.take(5)) {
+        buf.writeln('[${item.displayText}]');
+        buf.writeln(_truncateContext(item.content ?? item.displayText));
+      }
+    }
+
     if (entityBundle.correctionEntitySection.trim().isNotEmpty) {
       if (buf.isEmpty) {
         buf.writeln();
@@ -189,6 +236,7 @@ class TermPromptBuilder {
   List<String> _buildCorrectionReferences(
     List<DictionaryEntry> dictionaryEntries,
     SessionGlossary sessionGlossary,
+    List<MemoryItem> memoryItems,
   ) {
     final refs = <String>{};
     for (final pin in sessionGlossary.strongEntries.values) {
@@ -205,6 +253,63 @@ class TermPromptBuilder {
         refs.add('$original->$corrected');
       }
     }
+    for (final item in memoryItems.where((item) => item.isCorrectionEligible)) {
+      if (item.kind != MemoryItemKind.correction) continue;
+      final original = item.original.trim();
+      final canonical = item.canonical.trim();
+      if (original.isEmpty || canonical.isEmpty || original == canonical) {
+        continue;
+      }
+      refs.add('$original->$canonical');
+      for (final alias in item.aliases) {
+        final value = alias.trim();
+        if (value.isEmpty || value == canonical) continue;
+        refs.add('$value->$canonical');
+      }
+    }
     return refs.toList(growable: false);
+  }
+
+  List<MemoryItem> _promptEligibleMemoryItems(List<MemoryItem> memoryItems) {
+    return memoryItems
+        .where((item) {
+          if (!item.isPromptEligible) return false;
+          switch (item.kind) {
+            case MemoryItemKind.correction:
+            case MemoryItemKind.preserve:
+            case MemoryItemKind.entity:
+              return item.displayText.trim().isNotEmpty;
+            case MemoryItemKind.reference:
+              return (item.content ?? item.displayText).trim().isNotEmpty;
+          }
+        })
+        .toList(growable: false);
+  }
+
+  List<MemoryItem> _activeMemoryReferences(List<MemoryItem> memoryItems) {
+    return memoryItems
+        .where(
+          (item) =>
+              item.kind == MemoryItemKind.reference &&
+              (item.content ?? item.displayText).trim().isNotEmpty,
+        )
+        .toList(growable: false);
+  }
+
+  List<String> _activeMemoryPreferredTerms(List<MemoryItem> memoryItems) {
+    final terms = <String>{};
+    for (final item in memoryItems) {
+      switch (item.kind) {
+        case MemoryItemKind.correction:
+        case MemoryItemKind.preserve:
+        case MemoryItemKind.entity:
+          final value = item.displayText.trim();
+          if (value.isNotEmpty) terms.add(value);
+          break;
+        case MemoryItemKind.reference:
+          break;
+      }
+    }
+    return terms.toList(growable: false);
   }
 }

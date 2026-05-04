@@ -14,6 +14,7 @@ import '../services/overlay_service.dart';
 import 'pages/dictionary_page.dart';
 import 'pages/history_page.dart';
 import 'pages/dashboard_page.dart';
+import 'onboarding_wizard.dart';
 import 'settings_screen.dart';
 
 /// macOS keyCode 到 Flutter LogicalKeyboardKey 的映射
@@ -97,6 +98,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _homePermissionsChecked = false;
   LogicalKeyboardKey? _lastRegisteredHotkey;
   bool _fnTapToTalkPressCandidate = false;
+  bool _onboardingDialogShown = false;
 
   /// 主导航项（首页 / 记忆库 / 转写档案）
   List<_NavItem> _getNavItems(
@@ -122,6 +124,7 @@ class _MainScreenState extends State<MainScreen> {
       _settingsProvider = settings;
       _settingsListener = () {
         _registerCurrentHotkey(settings);
+        _maybeShowOnboarding(settings);
       };
       settings.addListener(_settingsListener);
       _settingsListener();
@@ -189,6 +192,23 @@ class _MainScreenState extends State<MainScreen> {
     OverlayService.registerHotkey(keyCode: keyCode).then((ok) {
       LogService.info('HOTKEY', 'registerHotkey result=$ok');
       if (!mounted || ok) return;
+    });
+  }
+
+  void _maybeShowOnboarding(SettingsProvider settings) {
+    if (!settings.loadCompleted ||
+        !settings.shouldShowOnboardingOnLaunch ||
+        _onboardingDialogShown) {
+      return;
+    }
+    _onboardingDialogShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !settings.shouldShowOnboardingOnLaunch) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const OnboardingWizard(),
+      );
     });
   }
 
@@ -392,11 +412,25 @@ class _MainScreenState extends State<MainScreen> {
         entityMemories: settings.entityMemories,
         entityAliases: settings.entityAliases,
         entityRelations: settings.entityRelations,
+        memoryItems: settings.adaptiveMemoryItems,
         maxReferenceEntries: settings.correctionMaxReferenceEntries,
         minCandidateScore: settings.correctionMinCandidateScore,
       );
+      recording.onSessionGlossaryFlush = (entries, sourceRef) {
+        return settings.recordSessionGlossaryMemory(
+          entries,
+          sourceRef: sourceRef,
+        );
+      };
+      recording.onSttPromptTrace = settings.recordMemoryPromptInjection;
+      recording.onMemoryCorrectionHit = (ids, {sourceRef = ''}) {
+        return settings.recordMemoryCorrectionHit(ids, sourceRef: sourceRef);
+      };
     } else {
       recording.disableCorrectionService();
+      recording.onSessionGlossaryFlush = null;
+      recording.onSttPromptTrace = null;
+      recording.onMemoryCorrectionHit = null;
     }
     // 终态回溯开关同步
     recording.retrospectiveCorrectionEnabled =

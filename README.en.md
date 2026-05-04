@@ -27,6 +27,14 @@ If you want to build on your own machine, use the commands below. If you just wa
 **Note:** On macOS, you need to allow this app in Privacy & Security before launching it. Example:
 ![mac](screenshots/mac_start.png)
 
+If macOS reports that the app cannot be opened because the developer cannot be verified, or the app is quarantined, run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Offhand.app
+```
+
+If the app is not in `/Applications`, replace the path with the actual `.app` path.
+
 ### macOS build
 ```
 flutter build macos --release

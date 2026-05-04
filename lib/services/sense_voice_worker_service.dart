@@ -19,12 +19,12 @@ class SenseVoiceWorkerService {
       'transcribe modelDir=$modelDir audio=$audioPath prompt=${(prompt ?? '').trim().isNotEmpty}',
     );
 
-    final modelFile = p.join(modelDir, 'model.int8.onnx');
+    final modelFile = await _resolveSenseVoiceModelFile(modelDir);
     final tokensFile = p.join(modelDir, 'tokens.txt');
 
     if (!await File(modelFile).exists()) {
       throw SenseVoiceWorkerException(
-        '模型文件不存在: $modelFile\n请在设置中下载 SenseVoice 模型',
+        '模型文件不存在: $modelDir/model.int8.onnx 或 $modelDir/model.onnx\n请在设置中下载 SenseVoice 模型',
       );
     }
 
@@ -60,7 +60,7 @@ class SenseVoiceWorkerService {
       }
 
       final safeModelDir = await _ensureAsciiDir(modelDir);
-      final safeModelFile = p.join(safeModelDir, 'model.int8.onnx');
+      final safeModelFile = await _resolveSenseVoiceModelFile(safeModelDir);
       final safeTokensFile = p.join(safeModelDir, 'tokens.txt');
 
       final config = sherpa.OfflineRecognizerConfig(
@@ -112,13 +112,14 @@ class SenseVoiceWorkerService {
   Future<SenseVoiceWorkerCheckResult> checkAvailability() async {
     try {
       final modelDir = _resolveModelDir();
-      final modelFile = p.join(modelDir, 'model.int8.onnx');
+      final modelFile = await _resolveSenseVoiceModelFile(modelDir);
       final tokensFile = p.join(modelDir, 'tokens.txt');
 
       if (!await File(modelFile).exists()) {
         return SenseVoiceWorkerCheckResult(
           ok: false,
-          message: '模型文件不存在: $modelFile\n请在设置中下载 SenseVoice 模型',
+          message:
+              '模型文件不存在: $modelDir/model.int8.onnx 或 $modelDir/model.onnx\n请在设置中下载 SenseVoice 模型',
         );
       }
 
@@ -147,6 +148,16 @@ class SenseVoiceWorkerService {
       return modelPath;
     }
     return p.normalize(p.absolute(modelPath));
+  }
+
+  static Future<String> _resolveSenseVoiceModelFile(String modelDir) async {
+    final int8File = p.join(modelDir, 'model.int8.onnx');
+    if (await File(int8File).exists()) return int8File;
+
+    final fp32File = p.join(modelDir, 'model.onnx');
+    if (await File(fp32File).exists()) return fp32File;
+
+    return int8File;
   }
 
   static void _ensureBindingsInitialized() {

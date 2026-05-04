@@ -16,9 +16,12 @@ import '../models/entity_memory.dart';
 import '../models/entity_relation.dart';
 import '../models/imported_reference_term.dart';
 import '../models/markdown_term_import_result.dart';
+import '../models/memory_event.dart';
+import '../models/memory_item.dart';
 import '../models/prompt_template.dart';
 import '../models/provider_config.dart';
 import '../models/scene_mode.dart';
+import '../models/stt_request_context.dart';
 import '../models/stt_model_entry.dart';
 import '../models/term_context_entry.dart';
 import '../database/app_database.dart';
@@ -26,9 +29,13 @@ import '../services/network_client_service.dart';
 import '../services/pinyin_matcher.dart';
 import '../services/audio_recorder.dart';
 import '../services/local_asr_process_manager.dart';
+import '../services/adaptive_memory_repository.dart';
 import '../services/entity_dictionary_bridge.dart';
 import '../services/entity_learning_service.dart';
+import '../services/learning_feedback_service.dart';
 import '../services/markdown_term_import_service.dart';
+import '../services/memory_evolution_engine.dart';
+import '../services/session_glossary.dart';
 
 class DictionaryCsvImportResult {
   final int totalRows;
@@ -47,6 +54,7 @@ class SettingsProvider extends ChangeNotifier {
   static const _correctionMaxReferenceEntries = 15;
   static const _correctionMinCandidateScore = 0.30;
   static const _correctionEnableSingleCharFuzzy = false;
+  static const onboardingCompletedStorageKey = 'onboarding_completed';
 
   static const _configKey = 'stt_provider_config';
   static const _hotkeyKey = 'hotkey';
@@ -76,6 +84,8 @@ class SettingsProvider extends ChangeNotifier {
   static const _entityAliasesKey = 'entity_aliases_v1';
   static const _entityRelationsKey = 'entity_relations_v1';
   static const _entityEvidencesKey = 'entity_evidences_v1';
+  static const _adaptiveMemoryItemsKey = 'adaptive_memory_items_v1';
+  static const _memoryEventsKey = 'memory_events_v1';
   static const _importedReferenceTermsKey = 'imported_reference_terms_v1';
   static const _correctionEnabledKey = 'correction_enabled';
   static const _retrospectiveCorrectionEnabledKey =
@@ -141,6 +151,8 @@ class SettingsProvider extends ChangeNotifier {
   List<EntityAlias> _entityAliases = [];
   List<EntityRelation> _entityRelations = [];
   List<EntityEvidence> _entityEvidences = [];
+  List<MemoryItem> _adaptiveMemoryItems = [];
+  List<MemoryEvent> _memoryEvents = [];
 
   // Correction settings
   bool _correctionEnabled = true;
@@ -148,6 +160,9 @@ class SettingsProvider extends ChangeNotifier {
   bool _historyContextEnhancementEnabled = true;
   String _correctionPrompt = '';
   int _localModelIdleUnloadMinutes = 3;
+  bool _loadCompleted = false;
+  bool _onboardingCompleted = false;
+  bool _shouldShowOnboardingOnLaunch = false;
   final PinyinMatcher _pinyinMatcher = PinyinMatcher(
     enableSingleCharFuzzy: _correctionEnableSingleCharFuzzy,
   );
@@ -157,6 +172,12 @@ class SettingsProvider extends ChangeNotifier {
       EntityLearningService();
   static const EntityDictionaryBridge _entityDictionaryBridge =
       EntityDictionaryBridge();
+  static const AdaptiveMemoryRepository _adaptiveMemoryRepository =
+      AdaptiveMemoryRepository();
+  static const MemoryEvolutionEngine _memoryEvolutionEngine =
+      MemoryEvolutionEngine();
+  static const LearningFeedbackService _learningFeedbackService =
+      LearningFeedbackService();
 
   SttProviderConfig get config => _config;
   List<SttProviderConfig> get sttPresets => _sttPresets;
@@ -228,6 +249,16 @@ class SettingsProvider extends ChangeNotifier {
       List.unmodifiable(_entityRelations);
   List<EntityEvidence> get entityEvidences =>
       List.unmodifiable(_entityEvidences);
+  List<MemoryItem> get adaptiveMemoryItems =>
+      _adaptiveMemoryRepository.mergeWithLegacy(
+        memoryItems: _adaptiveMemoryItems,
+        dictionaryEntries: _dictionaryEntries,
+        pendingCandidates: _dictationTermPendingCandidates,
+        termContextEntries: _termContextEntries,
+        entityMemories: _entityMemories,
+        entityAliases: _entityAliases,
+      );
+  List<MemoryEvent> get memoryEvents => List.unmodifiable(_memoryEvents);
 
   // Correction getters
   bool get correctionEnabled => _correctionEnabled;
@@ -240,6 +271,10 @@ class SettingsProvider extends ChangeNotifier {
   int get correctionMaxReferenceEntries => _correctionMaxReferenceEntries;
   double get correctionMinCandidateScore => _correctionMinCandidateScore;
   bool get correctionEnableSingleCharFuzzy => _correctionEnableSingleCharFuzzy;
+  bool get loadCompleted => _loadCompleted;
+  bool get onboardingCompleted => _onboardingCompleted;
+  bool get shouldShowOnboardingOnLaunch => _shouldShowOnboardingOnLaunch;
+  bool get onboardingScheduledForNextLaunch => !_onboardingCompleted;
 
   AiEnhanceConfig get effectiveAiEnhanceConfig {
     final active = activeAiModelEntry;
@@ -319,6 +354,14 @@ class SettingsProvider extends ChangeNotifier {
     final db = AppDatabase.instance;
 
     await _loadPresetsFromAssets();
+
+    final onboardingCompletedStr = await db.getSetting(
+      onboardingCompletedStorageKey,
+    );
+    if (onboardingCompletedStr != null) {
+      _onboardingCompleted = onboardingCompletedStr == 'true';
+    }
+    _shouldShowOnboardingOnLaunch = !_onboardingCompleted;
 
     // 加载服务商配置
     final configJson = await db.getSetting(_configKey);
@@ -674,6 +717,32 @@ class SettingsProvider extends ChangeNotifier {
       } catch (_) {}
     }
 
+    final adaptiveMemoryItemsJson = await db.getSetting(
+      _adaptiveMemoryItemsKey,
+    );
+    if (adaptiveMemoryItemsJson != null) {
+      try {
+        final list = json.decode(adaptiveMemoryItemsJson) as List<dynamic>;
+        _adaptiveMemoryItems = list
+            .whereType<Map<String, dynamic>>()
+            .map(MemoryItem.fromJson)
+            .where((item) => item.displayText.isNotEmpty)
+            .toList(growable: false);
+      } catch (_) {}
+    }
+
+    final memoryEventsJson = await db.getSetting(_memoryEventsKey);
+    if (memoryEventsJson != null) {
+      try {
+        final list = json.decode(memoryEventsJson) as List<dynamic>;
+        _memoryEvents = list
+            .whereType<Map<String, dynamic>>()
+            .map(MemoryEvent.fromJson)
+            .where((event) => event.id.isNotEmpty)
+            .toList(growable: false);
+      } catch (_) {}
+    }
+
     // 构建拼音索引
     _pinyinMatcher.buildIndex(_dictionaryEntries);
 
@@ -715,6 +784,7 @@ class SettingsProvider extends ChangeNotifier {
     );
     await _cleanupRemovedSpeakerSettings();
 
+    _loadCompleted = true;
     notifyListeners();
   }
 
@@ -803,6 +873,29 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setHotkey(LogicalKeyboardKey key) async {
     _hotkey = key;
     await _saveSetting(_hotkeyKey, key.keyId.toString());
+    notifyListeners();
+  }
+
+  Future<void> setOnboardingCompleted(bool completed) async {
+    _onboardingCompleted = completed;
+    if (completed) {
+      _shouldShowOnboardingOnLaunch = false;
+    } else if (!_loadCompleted) {
+      _shouldShowOnboardingOnLaunch = true;
+    }
+    await _saveSetting(onboardingCompletedStorageKey, completed.toString());
+    notifyListeners();
+  }
+
+  Future<void> setOnboardingForNextLaunch(bool enabled) async {
+    _onboardingCompleted = !enabled;
+    if (!enabled) {
+      _shouldShowOnboardingOnLaunch = false;
+    }
+    await _saveSetting(
+      onboardingCompletedStorageKey,
+      _onboardingCompleted.toString(),
+    );
     notifyListeners();
   }
 
@@ -1324,6 +1417,20 @@ class SettingsProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> _saveAdaptiveMemoryItems() async {
+    await _saveSetting(
+      _adaptiveMemoryItemsKey,
+      json.encode(_adaptiveMemoryItems.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> _saveMemoryEvents() async {
+    await _saveSetting(
+      _memoryEventsKey,
+      json.encode(_memoryEvents.map((e) => e.toJson()).toList()),
+    );
+  }
+
   /// 重建拼音索引（词典变更后调用）
   void _rebuildPinyinIndex() {
     _pinyinMatcher.buildIndex(_dictionaryEntries);
@@ -1468,6 +1575,427 @@ class SettingsProvider extends ChangeNotifier {
     return updated;
   }
 
+  Future<List<MemoryItem>> recordHistoryEditToMemory({
+    required String beforeText,
+    required String afterText,
+    String? rawText,
+    String sourceHistoryId = '',
+  }) async {
+    final result = _learningFeedbackService.recordHistoryEdit(
+      currentItems: adaptiveMemoryItems,
+      beforeText: beforeText,
+      afterText: afterText,
+      rawText: rawText,
+      sourceHistoryId: sourceHistoryId,
+    );
+    if (!result.hasChanges) return const [];
+    _adaptiveMemoryItems = result.items;
+    _memoryEvents = [...result.events, ..._memoryEvents].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+    notifyListeners();
+    return result.learnedItems;
+  }
+
+  Future<List<MemoryItem>> recordSessionGlossaryMemory(
+    Map<String, TermPin> strongEntries, {
+    String sourceRef = '',
+  }) async {
+    final result = _learningFeedbackService.flushSessionGlossary(
+      currentItems: adaptiveMemoryItems,
+      strongEntries: strongEntries,
+      sourceRef: sourceRef,
+    );
+    if (!result.hasChanges) return const [];
+    _adaptiveMemoryItems = result.items;
+    _memoryEvents = [...result.events, ..._memoryEvents].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+    notifyListeners();
+    return result.learnedItems;
+  }
+
+  Future<void> recordMemoryPromptInjection(SttRequestContext context) async {
+    final result = _learningFeedbackService.recordPromptInjected(
+      currentItems: adaptiveMemoryItems,
+      context: context,
+    );
+    if (!result.hasChanges) return;
+    _adaptiveMemoryItems = result.items;
+    _memoryEvents = [...result.events, ..._memoryEvents].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+    notifyListeners();
+  }
+
+  Future<void> recordMemoryCorrectionHit(
+    Iterable<String> memoryItemIds, {
+    String sourceRef = '',
+  }) async {
+    final result = _learningFeedbackService.recordCorrectionHit(
+      currentItems: adaptiveMemoryItems,
+      memoryItemIds: memoryItemIds,
+      sourceRef: sourceRef,
+    );
+    if (!result.hasChanges) return;
+    _adaptiveMemoryItems = result.items;
+    _memoryEvents = [...result.events, ..._memoryEvents].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+    notifyListeners();
+  }
+
+  Future<MemoryItem> addManualMemoryItem({
+    required MemoryItemKind kind,
+    String original = '',
+    String canonical = '',
+    List<String> aliases = const [],
+    String? content,
+    String? category,
+    MemoryItemStatus status = MemoryItemStatus.active,
+  }) async {
+    final normalizedOriginal = original.trim();
+    final normalizedCanonical = canonical.trim();
+    final normalizedContent = content?.trim() ?? '';
+    if (kind == MemoryItemKind.correction &&
+        (normalizedOriginal.isEmpty || normalizedCanonical.isEmpty)) {
+      throw ArgumentError('correction memory requires original and canonical');
+    }
+    if (kind == MemoryItemKind.preserve && normalizedCanonical.isEmpty) {
+      throw ArgumentError('preserve memory requires canonical');
+    }
+    if (kind == MemoryItemKind.entity && normalizedCanonical.isEmpty) {
+      throw ArgumentError('entity memory requires canonical');
+    }
+    if (kind == MemoryItemKind.reference &&
+        normalizedCanonical.isEmpty &&
+        normalizedContent.isEmpty) {
+      throw ArgumentError('reference memory requires content');
+    }
+
+    final effectiveCanonical =
+        kind == MemoryItemKind.reference && normalizedCanonical.isEmpty
+        ? _memoryReferenceTitle(normalizedContent)
+        : normalizedCanonical;
+    final key = MemoryItem.buildKey(
+      kind: kind,
+      original: normalizedOriginal,
+      canonical: effectiveCanonical,
+    );
+    final snapshot = adaptiveMemoryItems;
+    final now = DateTime.now();
+    MemoryItem? saved;
+    var updatedExisting = false;
+
+    _adaptiveMemoryItems = snapshot
+        .map((item) {
+          if (item.normalizedKey != key ||
+              item.status == MemoryItemStatus.archived) {
+            return item;
+          }
+          updatedExisting = true;
+          final mergedAliases = {
+            ...item.aliases,
+            ...aliases,
+          }.where((value) => value.trim().isNotEmpty).toList(growable: false);
+          saved = item.copyWith(
+            status: status,
+            aliases: mergedAliases,
+            content: normalizedContent.isEmpty
+                ? item.content
+                : normalizedContent,
+            category: category,
+            clearCategory: category == null || category.trim().isEmpty,
+            source: 'manual',
+            confidence: item.confidence > 0.95 ? item.confidence : 0.95,
+            strength: item.strength + 4,
+            lastSeenAt: now,
+            updatedAt: now,
+            stats: item.stats.add(evidence: 1, positive: 1),
+          );
+          return saved!;
+        })
+        .toList(growable: false);
+
+    if (!updatedExisting) {
+      saved = MemoryItem.create(
+        kind: kind,
+        status: status,
+        scope: MemoryItemScope.user,
+        original: normalizedOriginal,
+        canonical: effectiveCanonical,
+        aliases: aliases,
+        content: normalizedContent,
+        category: category,
+        source: 'manual',
+        confidence: 0.95,
+        strength: status == MemoryItemStatus.active ? 8 : 2,
+        now: now,
+        stats: const MemoryItemStats(evidenceCount: 1, positiveCount: 1),
+      );
+      _adaptiveMemoryItems = [saved!, ..._adaptiveMemoryItems];
+    }
+
+    final item = saved!;
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: item.id,
+        eventType: status == MemoryItemStatus.active
+            ? MemoryEventType.accept
+            : MemoryEventType.observe,
+        sourceType: 'manual',
+        original: item.original,
+        canonical: item.canonical,
+        afterTextExcerpt: item.content,
+        confidenceDelta: 0.95,
+        strengthDelta: status == MemoryItemStatus.active ? 4 : 1,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+
+    if (status == MemoryItemStatus.active) {
+      await _syncManualMemoryToLegacy(item);
+    }
+    notifyListeners();
+    return item;
+  }
+
+  Future<MemoryItem?> acceptMemoryItem(String id) async {
+    final snapshot = adaptiveMemoryItems;
+    MemoryItem? selected;
+    for (final item in snapshot) {
+      if (item.id == id) {
+        selected = item;
+        break;
+      }
+    }
+    if (selected == null) return null;
+
+    _adaptiveMemoryItems = _memoryEvolutionEngine.accept(snapshot, id);
+    final accepted = _adaptiveMemoryItems.firstWhere((item) => item.id == id);
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: id,
+        eventType: MemoryEventType.accept,
+        sourceType: 'manual',
+        original: accepted.original,
+        canonical: accepted.canonical,
+        confidenceDelta: 0.1,
+        strengthDelta: 2,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+
+    if (accepted.kind == MemoryItemKind.correction &&
+        accepted.original.isNotEmpty &&
+        accepted.canonical.isNotEmpty) {
+      await upsertDictionaryCorrectionEntry(
+        original: accepted.original,
+        corrected: accepted.canonical,
+        category: accepted.category,
+        source: DictionaryEntrySource.historyEdit,
+      );
+    } else if (accepted.kind == MemoryItemKind.preserve &&
+        accepted.canonical.isNotEmpty) {
+      final exists = _dictionaryEntries.any((entry) {
+        return entry.type == DictionaryEntryType.preserve &&
+            entry.original.toLowerCase() == accepted.canonical.toLowerCase();
+      });
+      if (!exists) {
+        await addDictionaryEntry(
+          DictionaryEntry.create(
+            original: accepted.canonical,
+            category: accepted.category,
+            source: DictionaryEntrySource.historyEdit,
+          ),
+        );
+      }
+    }
+    notifyListeners();
+    return accepted;
+  }
+
+  Future<MemoryItem?> suppressMemoryItem(String id) async {
+    final snapshot = adaptiveMemoryItems;
+    MemoryItem? selected;
+    for (final item in snapshot) {
+      if (item.id == id) {
+        selected = item;
+        break;
+      }
+    }
+    if (selected == null) return null;
+
+    _adaptiveMemoryItems = _memoryEvolutionEngine.suppress(snapshot, id);
+    final suppressed = _adaptiveMemoryItems.firstWhere((item) => item.id == id);
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: id,
+        eventType: MemoryEventType.reject,
+        sourceType: 'manual',
+        original: suppressed.original,
+        canonical: suppressed.canonical,
+        confidenceDelta: -0.25,
+        strengthDelta: -5,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+    notifyListeners();
+    return suppressed;
+  }
+
+  Future<MemoryItem?> archiveMemoryItem(String id) async {
+    final snapshot = adaptiveMemoryItems;
+    MemoryItem? selected;
+    for (final item in snapshot) {
+      if (item.id == id) {
+        selected = item;
+        break;
+      }
+    }
+    if (selected == null) return null;
+
+    final now = DateTime.now();
+    _adaptiveMemoryItems = snapshot
+        .map((item) {
+          if (item.id != id) return item;
+          return item.copyWith(
+            status: MemoryItemStatus.archived,
+            updatedAt: now,
+          );
+        })
+        .toList(growable: false);
+    final archived = _adaptiveMemoryItems.firstWhere((item) => item.id == id);
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: id,
+        eventType: MemoryEventType.archive,
+        sourceType: 'manual',
+        original: archived.original,
+        canonical: archived.canonical,
+        strengthDelta: -2,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+    notifyListeners();
+    return archived;
+  }
+
+  Future<void> _syncManualMemoryToLegacy(MemoryItem item) async {
+    if (item.kind == MemoryItemKind.correction &&
+        item.original.isNotEmpty &&
+        item.canonical.isNotEmpty) {
+      await upsertDictionaryCorrectionEntry(
+        original: item.original,
+        corrected: item.canonical,
+        category: item.category,
+        source: DictionaryEntrySource.manual,
+      );
+      return;
+    }
+    if (item.kind == MemoryItemKind.preserve && item.canonical.isNotEmpty) {
+      final exists = _dictionaryEntries.any((entry) {
+        return entry.type == DictionaryEntryType.preserve &&
+            entry.original.toLowerCase() == item.canonical.toLowerCase();
+      });
+      if (!exists) {
+        await addDictionaryEntry(
+          DictionaryEntry.create(
+            original: item.canonical,
+            category: item.category,
+            source: DictionaryEntrySource.manual,
+          ),
+        );
+      }
+    }
+  }
+
+  String _memoryReferenceTitle(String content) {
+    final normalized = content.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= 24) return normalized;
+    return '${normalized.substring(0, 24)}...';
+  }
+
+  Future<void> _activateMatchingCorrectionMemory({
+    required String original,
+    required String canonical,
+  }) async {
+    final key = MemoryItem.buildKey(
+      kind: MemoryItemKind.correction,
+      original: original,
+      canonical: canonical,
+    );
+    final snapshot = adaptiveMemoryItems;
+    MemoryItem? target;
+    for (final item in snapshot) {
+      if (item.normalizedKey == key) {
+        target = item;
+        break;
+      }
+    }
+    if (target == null || target.status == MemoryItemStatus.active) return;
+    _adaptiveMemoryItems = _memoryEvolutionEngine.accept(snapshot, target.id);
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: target.id,
+        eventType: MemoryEventType.accept,
+        sourceType: 'dictionary_accept',
+        original: original,
+        canonical: canonical,
+        confidenceDelta: 0.1,
+        strengthDelta: 2,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+  }
+
+  Future<void> _suppressMatchingCorrectionMemory({
+    required String original,
+    required String canonical,
+  }) async {
+    final key = MemoryItem.buildKey(
+      kind: MemoryItemKind.correction,
+      original: original,
+      canonical: canonical,
+    );
+    final snapshot = adaptiveMemoryItems;
+    MemoryItem? target;
+    for (final item in snapshot) {
+      if (item.normalizedKey == key) {
+        target = item;
+        break;
+      }
+    }
+    if (target == null || target.status == MemoryItemStatus.suppressed) {
+      return;
+    }
+    _adaptiveMemoryItems = _memoryEvolutionEngine.suppress(snapshot, target.id);
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: target.id,
+        eventType: MemoryEventType.reject,
+        sourceType: 'dictionary_reject',
+        original: original,
+        canonical: canonical,
+        confidenceDelta: -0.25,
+        strengthDelta: -5,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
+  }
+
   Future<DictionaryEntry?> acceptTermPendingCandidate(String id) async {
     DictationTermPendingCandidate? candidate;
     for (final item in _dictationTermPendingCandidates) {
@@ -1483,6 +2011,10 @@ class SettingsProvider extends ChangeNotifier {
       corrected: candidate.corrected,
       category: candidate.category,
       source: DictionaryEntrySource.historyEdit,
+    );
+    await _activateMatchingCorrectionMemory(
+      original: candidate.original,
+      canonical: candidate.corrected,
     );
     _dictationTermPendingCandidates.removeWhere((item) => item.id == id);
     await _saveDictationTermPendingCandidates();
@@ -1505,6 +2037,10 @@ class SettingsProvider extends ChangeNotifier {
         corrected: candidate.corrected,
         category: candidate.category,
         source: DictionaryEntrySource.historyEdit,
+      );
+      await _activateMatchingCorrectionMemory(
+        original: candidate.original,
+        canonical: candidate.corrected,
       );
       acceptedEntries.add(entry);
     }
@@ -1537,6 +2073,10 @@ class SettingsProvider extends ChangeNotifier {
         category: candidate.category,
         source: DictionaryEntrySource.historyEdit,
       );
+      await _activateMatchingCorrectionMemory(
+        original: candidate.original,
+        canonical: candidate.corrected,
+      );
       acceptedEntries.add(entry);
     }
     _dictationTermPendingCandidates.removeWhere(
@@ -1548,10 +2088,18 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> rejectTermPendingCandidate(String id) async {
-    final hadCandidate = _dictationTermPendingCandidates.any(
-      (item) => item.id == id,
+    DictationTermPendingCandidate? candidate;
+    for (final item in _dictationTermPendingCandidates) {
+      if (item.id == id) {
+        candidate = item;
+        break;
+      }
+    }
+    if (candidate == null) return;
+    await _suppressMatchingCorrectionMemory(
+      original: candidate.original,
+      canonical: candidate.corrected,
     );
-    if (!hadCandidate) return;
     _dictationTermPendingCandidates.removeWhere((item) => item.id == id);
     await _saveDictationTermPendingCandidates();
     notifyListeners();
@@ -1559,6 +2107,12 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> rejectAllTermPendingCandidates() async {
     if (_dictationTermPendingCandidates.isEmpty) return;
+    for (final candidate in _dictationTermPendingCandidates) {
+      await _suppressMatchingCorrectionMemory(
+        original: candidate.original,
+        canonical: candidate.corrected,
+      );
+    }
     _dictationTermPendingCandidates.clear();
     await _saveDictationTermPendingCandidates();
     notifyListeners();
@@ -1571,6 +2125,14 @@ class SettingsProvider extends ChangeNotifier {
       (candidate) => targetIds.contains(candidate.id),
     );
     if (!hadCandidate) return;
+    for (final candidate in _dictationTermPendingCandidates.where(
+      (candidate) => targetIds.contains(candidate.id),
+    )) {
+      await _suppressMatchingCorrectionMemory(
+        original: candidate.original,
+        canonical: candidate.corrected,
+      );
+    }
     _dictationTermPendingCandidates.removeWhere(
       (candidate) => targetIds.contains(candidate.id),
     );
@@ -2205,9 +2767,88 @@ class SettingsProvider extends ChangeNotifier {
           source: DictionaryEntrySource.historyEdit,
         );
       }
+      await _upsertEntityMemoryItem(
+        entity: entity,
+        aliases: _entityAliases
+            .where((item) => item.entityId == entity.id)
+            .map((item) => item.aliasText)
+            .toList(growable: false),
+        sourceRef: sourceHistoryId,
+      );
       learned.add(entity);
     }
     return learned;
+  }
+
+  Future<void> _upsertEntityMemoryItem({
+    required EntityMemory entity,
+    required List<String> aliases,
+    String sourceRef = '',
+  }) async {
+    final key = MemoryItem.buildKey(
+      kind: MemoryItemKind.entity,
+      original: '',
+      canonical: entity.canonicalName,
+    );
+    final snapshot = adaptiveMemoryItems;
+    final now = DateTime.now();
+    var changed = false;
+    final next = snapshot
+        .map((item) {
+          if (item.normalizedKey != key) return item;
+          final mergedAliases = {
+            ...item.aliases,
+            ...aliases,
+          }.where((value) => value.trim().isNotEmpty).toList(growable: false);
+          changed = true;
+          return item.copyWith(
+            aliases: mergedAliases,
+            confidence: entity.confidence > item.confidence
+                ? entity.confidence
+                : item.confidence,
+            strength: item.strength + 2,
+            lastSeenAt: now,
+            updatedAt: now,
+            stats: item.stats.add(evidence: 1, positive: 1),
+          );
+        })
+        .toList(growable: false);
+
+    if (changed) {
+      _adaptiveMemoryItems = next;
+    } else {
+      _adaptiveMemoryItems = [
+        MemoryItem.create(
+          kind: MemoryItemKind.entity,
+          status: MemoryItemStatus.active,
+          scope: MemoryItemScope.user,
+          canonical: entity.canonicalName,
+          aliases: aliases,
+          category: entity.type.name,
+          source: 'history_edit',
+          confidence: entity.confidence,
+          strength: 10,
+          stats: const MemoryItemStats(evidenceCount: 1, positiveCount: 1),
+        ),
+        ...snapshot,
+      ];
+    }
+    _memoryEvents = [
+      MemoryEvent.create(
+        memoryId: _adaptiveMemoryItems
+            .firstWhere((item) => item.normalizedKey == key)
+            .id,
+        eventType: MemoryEventType.observe,
+        sourceType: 'entity_learning',
+        sourceRef: sourceRef,
+        canonical: entity.canonicalName,
+        confidenceDelta: entity.confidence,
+        strengthDelta: 2,
+      ),
+      ..._memoryEvents,
+    ].take(500).toList();
+    await _saveAdaptiveMemoryItems();
+    await _saveMemoryEvents();
   }
 
   Future<EntityMemory> addManualEntity({

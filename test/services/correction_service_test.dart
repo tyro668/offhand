@@ -6,6 +6,7 @@ import 'package:voicetype/models/dictionary_entry.dart';
 import 'package:voicetype/models/entity_alias.dart';
 import 'package:voicetype/models/entity_memory.dart';
 import 'package:voicetype/models/entity_relation.dart';
+import 'package:voicetype/models/memory_item.dart';
 import 'package:voicetype/services/correction_context.dart';
 import 'package:voicetype/services/correction_service.dart';
 import 'package:voicetype/services/pinyin_matcher.dart';
@@ -121,6 +122,43 @@ void main() {
       expect(result.llmInvoked, isTrue);
       expect(result.promptTokens, 50);
       expect(result.completionTokens, 20);
+    });
+
+    test('calls LLM when only adaptive memory reference matches', () async {
+      matcher.buildIndex([]);
+      setupMockServer('今天用了帆软做报表');
+      final memoryItem = MemoryItem.create(
+        kind: MemoryItemKind.correction,
+        status: MemoryItemStatus.weakActive,
+        scope: MemoryItemScope.user,
+        original: '反软',
+        canonical: '帆软',
+        confidence: 0.8,
+        strength: 4,
+      );
+      final hitIds = <String>[];
+
+      final service = CorrectionService(
+        matcher: matcher,
+        context: context,
+        aiConfig: AiEnhanceConfig(
+          agentName: 'test',
+          baseUrl: baseUrl,
+          apiKey: 'test-key',
+          model: 'test-model',
+          prompt: '',
+        ),
+        correctionPrompt: '纠错 prompt',
+        memoryItems: [memoryItem],
+        onMemoryCorrectionHit: (ids, {sourceRef = ''}) async {
+          hitIds.addAll(ids);
+        },
+      );
+
+      final result = await service.correct('今天用了反软做报表');
+      expect(result.text, '今天用了帆软做报表');
+      expect(result.llmInvoked, isTrue);
+      expect(hitIds, contains(memoryItem.id));
     });
 
     test(

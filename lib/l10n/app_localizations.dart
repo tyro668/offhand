@@ -110,6 +110,150 @@ abstract class AppLocalizations {
   /// **'Loading...'**
   String get loading;
 
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick setup'**
+  String get onboardingTitle;
+
+  /// No description provided for @onboardingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure hotkey, speech model, and text enhancement.'**
+  String get onboardingSubtitle;
+
+  /// No description provided for @onboardingShortcutStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotkey'**
+  String get onboardingShortcutStep;
+
+  /// No description provided for @onboardingVoiceStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech Model'**
+  String get onboardingVoiceStep;
+
+  /// No description provided for @onboardingTextStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Enhancement'**
+  String get onboardingTextStep;
+
+  /// No description provided for @onboardingSkipForNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get onboardingSkipForNow;
+
+  /// No description provided for @onboardingBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get onboardingBack;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get onboardingComplete;
+
+  /// No description provided for @onboardingShortcutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Mode'**
+  String get onboardingShortcutTitle;
+
+  /// No description provided for @onboardingShortcutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the voice input hotkey and trigger mode.'**
+  String get onboardingShortcutDescription;
+
+  /// No description provided for @onboardingCurrentHotkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Current hotkey'**
+  String get onboardingCurrentHotkey;
+
+  /// No description provided for @onboardingVoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speech Model'**
+  String get onboardingVoiceTitle;
+
+  /// No description provided for @onboardingVoiceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure speech recognition.'**
+  String get onboardingVoiceDescription;
+
+  /// No description provided for @onboardingCurrentVoiceModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current speech model'**
+  String get onboardingCurrentVoiceModel;
+
+  /// No description provided for @onboardingTextTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Enhancement'**
+  String get onboardingTextTitle;
+
+  /// No description provided for @onboardingTextDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure text enhancement.'**
+  String get onboardingTextDescription;
+
+  /// No description provided for @onboardingCurrentTextModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current text model'**
+  String get onboardingCurrentTextModel;
+
+  /// No description provided for @onboardingEnableTextEnhancement.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable text enhancement'**
+  String get onboardingEnableTextEnhancement;
+
+  /// No description provided for @onboardingSaveVoiceModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save speech model'**
+  String get onboardingSaveVoiceModel;
+
+  /// No description provided for @onboardingSaveTextModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save text model'**
+  String get onboardingSaveTextModel;
+
+  /// No description provided for @onboardingModelSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Model saved and enabled'**
+  String get onboardingModelSaved;
+
+  /// No description provided for @onboardingNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get onboardingNotConfigured;
+
+  /// No description provided for @onboardingLocalModelNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage local model files in Speech Model settings.'**
+  String get onboardingLocalModelNotice;
+
   /// No description provided for @generalSettings.
   ///
   /// In en, this message translates to:
@@ -433,6 +577,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'简体中文'**
   String get simplifiedChinese;
+
+  /// No description provided for @onboardingRelaunchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup Guide'**
+  String get onboardingRelaunchTitle;
+
+  /// No description provided for @onboardingRelaunchDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the first-run setup guide again on next launch. Useful for testing onboarding.'**
+  String get onboardingRelaunchDescription;
+
+  /// No description provided for @onboardingRelaunchSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Show guide on next launch'**
+  String get onboardingRelaunchSwitch;
+
+  /// No description provided for @onboardingRelaunchScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup guide will show on next launch'**
+  String get onboardingRelaunchScheduled;
+
+  /// No description provided for @onboardingRelaunchCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Startup guide reset cancelled'**
+  String get onboardingRelaunchCancelled;
 
   /// No description provided for @logsDescription.
   ///
@@ -1843,6 +2017,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set up correction and preservation rules to help AI output professional terms and fixed expressions more accurately.'**
   String get dictionaryDescription;
+
+  /// No description provided for @memorySourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: {value}'**
+  String memorySourceLabel(String value);
+
+  /// No description provided for @memorySourceManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get memorySourceManual;
+
+  /// No description provided for @memorySourceHistoryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'History edit'**
+  String get memorySourceHistoryEdit;
+
+  /// No description provided for @memorySourcePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending suggestion'**
+  String get memorySourcePending;
+
+  /// No description provided for @memorySourceSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get memorySourceSession;
+
+  /// No description provided for @memorySourceSessionGlossary.
+  ///
+  /// In en, this message translates to:
+  /// **'Session glossary'**
+  String get memorySourceSessionGlossary;
+
+  /// No description provided for @memorySourceMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown'**
+  String get memorySourceMarkdown;
+
+  /// No description provided for @memorySourceMarkdownDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown document'**
+  String get memorySourceMarkdownDocument;
+
+  /// No description provided for @memorySourceMarkdownImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown import'**
+  String get memorySourceMarkdownImport;
+
+  /// No description provided for @memorySourceEntityMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity memory'**
+  String get memorySourceEntityMemory;
+
+  /// No description provided for @memorySourcePromptTrace.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt trace'**
+  String get memorySourcePromptTrace;
+
+  /// No description provided for @memorySourceCorrectionLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction log'**
+  String get memorySourceCorrectionLog;
+
+  /// No description provided for @memorySourceDictionaryAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictionary acceptance'**
+  String get memorySourceDictionaryAccept;
+
+  /// No description provided for @memorySourceDictionaryReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictionary rejection'**
+  String get memorySourceDictionaryReject;
+
+  /// No description provided for @memorySourceEntityLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity learning'**
+  String get memorySourceEntityLearning;
+
+  /// No description provided for @memorySourceRealtime.
+  ///
+  /// In en, this message translates to:
+  /// **'Realtime correction'**
+  String get memorySourceRealtime;
+
+  /// No description provided for @memorySourceRetrospective.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrospective correction'**
+  String get memorySourceRetrospective;
+
+  /// No description provided for @memorySourceSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get memorySourceSystem;
+
+  /// No description provided for @memoryPromptInjections.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt injections'**
+  String get memoryPromptInjections;
 
   /// No description provided for @dictionaryAdd.
   ///

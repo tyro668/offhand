@@ -5,6 +5,7 @@ import '../models/entity_alias.dart';
 import '../models/entity_memory.dart';
 import '../models/entity_relation.dart';
 import '../models/entity_prompt_bundle.dart';
+import '../models/memory_item.dart';
 import 'ai_enhance_service.dart';
 import 'correction_change_log_service.dart';
 import 'correction_context.dart';
@@ -38,6 +39,9 @@ class CorrectionResult {
   int get totalTokens => promptTokens + completionTokens;
 }
 
+typedef MemoryCorrectionHitRecorder =
+    Future<void> Function(List<String> memoryItemIds, {String sourceRef});
+
 /// 语音输入纠错服务。
 ///
 /// 核心流程：
@@ -56,8 +60,10 @@ class CorrectionService {
   final List<EntityMemory> entityMemories;
   final List<EntityAlias> entityAliases;
   final List<EntityRelation> entityRelations;
+  final List<MemoryItem> memoryItems;
   final SessionEntityState? sessionEntityState;
   final EntityRecallService entityRecallService;
+  final MemoryCorrectionHitRecorder? onMemoryCorrectionHit;
 
   CorrectionService({
     required this.matcher,
@@ -70,8 +76,10 @@ class CorrectionService {
     this.entityMemories = const [],
     this.entityAliases = const [],
     this.entityRelations = const [],
+    this.memoryItems = const [],
     this.sessionEntityState,
     this.entityRecallService = const EntityRecallService(),
+    this.onMemoryCorrectionHit,
   });
 
   /// 对 ASR 原始文本执行纠错。
@@ -93,7 +101,11 @@ class CorrectionService {
       matchesCount = matchHits.length;
 
       final entityBundle = _buildEntityBundle(rawSttText);
-      if (matchHits.isEmpty && !entityBundle.hasPromptData) {
+      final memoryReferenceBundle = _buildMemoryReferenceBundle(rawSttText);
+      final memoryReferenceStr = memoryReferenceBundle.reference;
+      if (matchHits.isEmpty &&
+          !entityBundle.hasPromptData &&
+          memoryReferenceStr.isEmpty) {
         // 无匹配 → 跳过 LLM，直接输出
         await LogService.info(
           'CORRECTION',
@@ -116,7 +128,9 @@ class CorrectionService {
 
       final selectedHits = _selectHitsForReference(rawSttText, matchHits);
       selectedCount = selectedHits.length;
-      if (selectedHits.isEmpty && !entityBundle.hasPromptData) {
+      if (selectedHits.isEmpty &&
+          !entityBundle.hasPromptData &&
+          memoryReferenceStr.isEmpty) {
         await LogService.info(
           'CORRECTION',
           'all matches filtered out locally and no entity hints, skipping LLM',
@@ -137,20 +151,27 @@ class CorrectionService {
 
       // 2. 构建 #R 引用表
       final referenceStr = _buildReferenceStringFromHits(selectedHits);
-      referenceChars = referenceStr.length;
+      final combinedReferenceStr = _joinReferenceParts([
+        referenceStr,
+        memoryReferenceStr,
+      ]);
+      referenceChars = combinedReferenceStr.length;
 
       await LogService.info(
         'CORRECTION',
         'reference selected ${selectedHits.length}/${matchHits.length}, '
-            'referenceChars=${referenceStr.length}',
+            'referenceChars=${combinedReferenceStr.length}',
       );
 
       // 3. 构建完整 prompt 消息（追加 SessionGlossary 强锚定）
-      var finalReference = referenceStr;
+      var finalReference = combinedReferenceStr;
       if (sessionGlossary != null && sessionGlossary!.hasStrongEntries) {
         final glossaryRef = sessionGlossary!.buildReferenceAppend();
         if (glossaryRef.isNotEmpty) {
-          finalReference = '$referenceStr|$glossaryRef';
+          finalReference = _joinReferenceParts([
+            combinedReferenceStr,
+            glossaryRef,
+          ]);
         }
       }
       final userMessage = _buildUserMessage(
@@ -231,6 +252,11 @@ class CorrectionService {
         } catch (_) {}
       }
 
+      await _recordMemoryHitsSafely(
+        memoryReferenceBundle.itemIds,
+        sourceRef: 'realtime',
+      );
+
       return CorrectionResult(
         text: correctedText,
         llmInvoked: true,
@@ -271,8 +297,12 @@ class CorrectionService {
         paragraphText,
         contextStr: previousParagraph,
       );
+      final memoryReferenceBundle = _buildMemoryReferenceBundle(paragraphText);
+      final memoryReferenceStr = memoryReferenceBundle.reference;
 
-      if (matchHits.isEmpty && !entityBundle.hasPromptData) {
+      if (matchHits.isEmpty &&
+          !entityBundle.hasPromptData &&
+          memoryReferenceStr.isEmpty) {
         await LogService.info(
           'CORRECTION',
           'retrospective: no dictionary/entity matches, skipping',
@@ -282,7 +312,9 @@ class CorrectionService {
       }
 
       final selectedHits = _selectHitsForReference(paragraphText, matchHits);
-      if (selectedHits.isEmpty && !entityBundle.hasPromptData) {
+      if (selectedHits.isEmpty &&
+          !entityBundle.hasPromptData &&
+          memoryReferenceStr.isEmpty) {
         await LogService.info(
           'CORRECTION',
           'retrospective: all matches filtered and no entity hints, skipping',
@@ -295,7 +327,10 @@ class CorrectionService {
           ? paragraphText
           : _normalizeMatchedTermsFromHits(paragraphText, selectedHits);
 
-      final referenceStr = _buildReferenceStringFromHits(selectedHits);
+      final referenceStr = _joinReferenceParts([
+        _buildReferenceStringFromHits(selectedHits),
+        memoryReferenceStr,
+      ]);
 
       // 使用提供的前段文本作为上下文，若为空则用当前上下文窗口
       final contextStr = previousParagraph.isNotEmpty
@@ -357,6 +392,11 @@ class CorrectionService {
         textChanged: correctedText != paragraphText,
         promptTokens: result.promptTokens,
         completionTokens: result.completionTokens,
+      );
+
+      await _recordMemoryHitsSafely(
+        memoryReferenceBundle.itemIds,
+        sourceRef: 'retrospective',
       );
 
       return CorrectionResult(
@@ -421,6 +461,65 @@ class CorrectionService {
       }
     }
     return parts.join('|');
+  }
+
+  _MemoryReferenceBundle _buildMemoryReferenceBundle(String inputText) {
+    if (memoryItems.isEmpty) return const _MemoryReferenceBundle();
+    final input = inputText.trim().toLowerCase();
+    final scored = <_ScoredMemoryReference>[];
+    for (final item in memoryItems.where((item) => item.isCorrectionEligible)) {
+      if (item.kind != MemoryItemKind.correction) continue;
+      final original = item.original.trim();
+      final canonical = item.canonical.trim();
+      if (original.isEmpty || canonical.isEmpty || original == canonical) {
+        continue;
+      }
+
+      var score = item.status == MemoryItemStatus.active ? 10.0 : 4.0;
+      if (input.contains(original.toLowerCase())) score += 20;
+      if (input.contains(canonical.toLowerCase())) score += 8;
+      for (final alias in item.aliases) {
+        if (alias.trim().isNotEmpty &&
+            input.contains(alias.trim().toLowerCase())) {
+          score += 16;
+          break;
+        }
+      }
+      score += item.confidence * 5 + item.strength.clamp(0, 10);
+
+      if (item.status == MemoryItemStatus.weakActive && score < 18) {
+        continue;
+      }
+      scored.add(_ScoredMemoryReference(item: item, score: score));
+    }
+
+    if (scored.isEmpty) return const _MemoryReferenceBundle();
+    scored.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      return a.item.displayText.compareTo(b.item.displayText);
+    });
+
+    final refs = <String>{};
+    final itemIds = <String>[];
+    for (final scoredItem in scored.take(maxReferenceEntries)) {
+      final item = scoredItem.item;
+      itemIds.add(item.id);
+      refs.add('${item.original.trim()}->${item.canonical.trim()}');
+      for (final alias in item.aliases) {
+        final value = alias.trim();
+        if (value.isEmpty || value == item.canonical.trim()) continue;
+        refs.add('$value->${item.canonical.trim()}');
+      }
+    }
+    return _MemoryReferenceBundle(reference: refs.join('|'), itemIds: itemIds);
+  }
+
+  String _joinReferenceParts(List<String> parts) {
+    return parts
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .join('|');
   }
 
   /// 构建用于纠错的 user message（#R/#I/#C 符号化协议）。
@@ -753,6 +852,16 @@ class CorrectionService {
       );
     } catch (_) {}
   }
+
+  Future<void> _recordMemoryHitsSafely(
+    List<String> memoryItemIds, {
+    required String sourceRef,
+  }) async {
+    if (memoryItemIds.isEmpty || onMemoryCorrectionHit == null) return;
+    try {
+      await onMemoryCorrectionHit!(memoryItemIds, sourceRef: sourceRef);
+    } catch (_) {}
+  }
 }
 
 class _RankedHit {
@@ -760,4 +869,18 @@ class _RankedHit {
   final double score;
 
   const _RankedHit({required this.hit, required this.score});
+}
+
+class _ScoredMemoryReference {
+  final MemoryItem item;
+  final double score;
+
+  const _ScoredMemoryReference({required this.item, required this.score});
+}
+
+class _MemoryReferenceBundle {
+  final String reference;
+  final List<String> itemIds;
+
+  const _MemoryReferenceBundle({this.reference = '', this.itemIds = const []});
 }

@@ -9,24 +9,31 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'local_asr_process_manager.dart';
 import 'log_service.dart';
 
-/// SenseVoice 模型描述（ONNX 格式，目录包含 model.int8.onnx + tokens.txt）
+/// SenseVoice 模型描述（ONNX 格式，目录包含 model.int8.onnx/model.onnx + tokens.txt）
 class SenseVoiceModel {
   final String fileName; // 模型目录名
   final String description;
   final int approximateSizeMB;
+  final String modelFileName;
+  final List<String> hosts;
+  final bool recommended;
 
   const SenseVoiceModel({
     required this.fileName,
     required this.description,
     required this.approximateSizeMB,
+    required this.modelFileName,
+    required this.hosts,
+    this.recommended = false,
   });
-}
 
-/// 模型目录内需要下载的文件
-const _kModelFiles = [
-  _ModelFileSpec(name: 'model.int8.onnx', isLarge: true),
-  _ModelFileSpec(name: 'tokens.txt', isLarge: false),
-];
+  List<String> get requiredFileNames => [modelFileName, 'tokens.txt'];
+
+  List<_ModelFileSpec> get _files => [
+    _ModelFileSpec(name: modelFileName, isLarge: true),
+    const _ModelFileSpec(name: 'tokens.txt', isLarge: false),
+  ];
+}
 
 class _ModelFileSpec {
   final String name;
@@ -35,7 +42,7 @@ class _ModelFileSpec {
 }
 
 /// 下载源（优先使用镜像）
-const _kModelHosts = [
+const _kSenseVoice20240717Hosts = [
   'https://hf-mirror.com/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main',
   'https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main',
 ];
@@ -45,6 +52,16 @@ const kSenseVoiceModels = [
     fileName: 'sense-voice-zh-en',
     description: 'SenseVoice 多语种 INT8 (~250MB) - 中/英/日/韩/粤',
     approximateSizeMB: 250,
+    modelFileName: 'model.int8.onnx',
+    hosts: _kSenseVoice20240717Hosts,
+    recommended: true,
+  ),
+  SenseVoiceModel(
+    fileName: 'sense-voice-zh-en-fp32',
+    description: 'SenseVoice 多语种 FP32 (~900MB) - 完整精度，更大模型文件',
+    approximateSizeMB: 900,
+    modelFileName: 'model.onnx',
+    hosts: _kSenseVoice20240717Hosts,
   ),
 ];
 
@@ -90,7 +107,8 @@ class SenseVoiceFfiService {
   static Future<bool> isModelDownloaded(String fileName) async {
     final dir = await defaultModelDir;
     final modelDir = p.join(dir, fileName);
-    for (final spec in _kModelFiles) {
+    final files = _modelFilesFor(fileName);
+    for (final spec in files) {
       if (!await File(p.join(modelDir, spec.name)).exists()) return false;
     }
     return true;
@@ -111,16 +129,17 @@ class SenseVoiceFfiService {
     final dir = await defaultModelDir;
     final modelDir = p.join(dir, model.fileName);
     await Directory(modelDir).create(recursive: true);
+    final modelFiles = model._files;
 
     // large 文件占 95% 进度，small 文件占 5%
-    final largeCount = _kModelFiles.where((f) => f.isLarge).length;
-    final smallCount = _kModelFiles.length - largeCount;
+    final largeCount = modelFiles.where((f) => f.isLarge).length;
+    final smallCount = modelFiles.length - largeCount;
     final largeWeight = smallCount > 0 ? 0.95 / largeCount : 1.0 / largeCount;
     final smallWeight = largeCount > 0 ? 0.05 / smallCount : 1.0 / smallCount;
 
     var cumulativeProgress = 0.0;
 
-    for (final spec in _kModelFiles) {
+    for (final spec in modelFiles) {
       final filePath = p.join(modelDir, spec.name);
 
       if (await File(filePath).exists()) {
@@ -137,6 +156,7 @@ class SenseVoiceFfiService {
       await _downloadFileWithMirrors(
         spec.name,
         filePath,
+        hosts: model.hosts,
         onProgress: (p) {
           onProgress((base + w * p).clamp(0.0, 1.0));
         },
@@ -153,20 +173,21 @@ class SenseVoiceFfiService {
   static Future<void> _downloadFileWithMirrors(
     String fileName,
     String destPath, {
+    required List<String> hosts,
     required void Function(double progress) onProgress,
     void Function(String message)? onStatus,
   }) async {
     final tmpPath = '$destPath.tmp';
     String? lastError;
 
-    for (var i = 0; i < _kModelHosts.length; i++) {
-      final host = _kModelHosts[i];
+    for (var i = 0; i < hosts.length; i++) {
+      final host = hosts[i];
       final url = '$host/$fileName';
       final hostLabel = Uri.parse(host).host;
 
       await LogService.info(
         'SENSEVOICE',
-        'trying mirror ${i + 1}/${_kModelHosts.length}: $url',
+        'trying mirror ${i + 1}/${hosts.length}: $url',
       );
       onStatus?.call('正在连接 $hostLabel ...');
 
@@ -285,6 +306,26 @@ class SenseVoiceFfiService {
     return p.join(dir, modelPath);
   }
 
+  static List<_ModelFileSpec> _modelFilesFor(String fileName) {
+    for (final model in kSenseVoiceModels) {
+      if (model.fileName == fileName) return model._files;
+    }
+    return const [
+      _ModelFileSpec(name: 'model.int8.onnx', isLarge: true),
+      _ModelFileSpec(name: 'tokens.txt', isLarge: false),
+    ];
+  }
+
+  static Future<String> _resolveSenseVoiceModelFile(String modelDir) async {
+    final int8File = p.join(modelDir, 'model.int8.onnx');
+    if (await File(int8File).exists()) return int8File;
+
+    final fp32File = p.join(modelDir, 'model.onnx');
+    if (await File(fp32File).exists()) return fp32File;
+
+    return int8File;
+  }
+
   /// 使用 sherpa-onnx 进行语音转文字
   Future<String> transcribe(String audioPath, {String? prompt}) async {
     final modelDir = await _resolveModelDir();
@@ -304,11 +345,13 @@ class SenseVoiceFfiService {
       'transcribe (sherpa-onnx) modelDir=$modelDir audio=$audioPath prompt=${(prompt ?? '').trim().isNotEmpty}',
     );
 
-    final modelFile = p.join(modelDir, 'model.int8.onnx');
+    final modelFile = await _resolveSenseVoiceModelFile(modelDir);
     final tokensFile = p.join(modelDir, 'tokens.txt');
 
     if (!await File(modelFile).exists()) {
-      throw SenseVoiceException('模型文件不存在: $modelFile\n请在设置中下载 SenseVoice 模型');
+      throw SenseVoiceException(
+        '模型文件不存在: $modelDir/model.int8.onnx 或 $modelDir/model.onnx\n请在设置中下载 SenseVoice 模型',
+      );
     }
 
     if (!await File(tokensFile).exists()) {
@@ -354,7 +397,7 @@ class SenseVoiceFfiService {
 
       // 构造离线识别配置 — 模型目录需使用 ASCII 安全路径
       final safeModelDir = await _ensureAsciiDir(modelDir);
-      final safeModelFile = p.join(safeModelDir, 'model.int8.onnx');
+      final safeModelFile = await _resolveSenseVoiceModelFile(safeModelDir);
       final safeTokensFile = p.join(safeModelDir, 'tokens.txt');
 
       final config = sherpa.OfflineRecognizerConfig(
@@ -577,13 +620,14 @@ class SenseVoiceFfiService {
   Future<SenseVoiceCheckResult> checkAvailabilityInProcess() async {
     try {
       final modelDir = await _resolveModelDir();
-      final modelFile = p.join(modelDir, 'model.int8.onnx');
+      final modelFile = await _resolveSenseVoiceModelFile(modelDir);
       final tokensFile = p.join(modelDir, 'tokens.txt');
 
       if (!await File(modelFile).exists()) {
         return SenseVoiceCheckResult(
           ok: false,
-          message: '模型文件不存在: $modelFile\n请在设置中下载 SenseVoice 模型',
+          message:
+              '模型文件不存在: $modelDir/model.int8.onnx 或 $modelDir/model.onnx\n请在设置中下载 SenseVoice 模型',
         );
       }
 

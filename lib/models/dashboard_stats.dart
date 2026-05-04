@@ -84,6 +84,18 @@ class DashboardStats {
   final int retroCompletionTokens;
   final int retroTextChanged;
 
+  // ── 学习记忆 ──
+  final int memoryTotalCount;
+  final int memoryPendingCount;
+  final int memoryWeakActiveCount;
+  final int memoryActiveCount;
+  final int memorySuppressedCount;
+  final int memoryHighConfidenceCount;
+  final int memoryWeekNewCount;
+  final int memoryEventsCount;
+  final int memoryPromptInjectionCount;
+  final int memoryCorrectionHitCount;
+
   const DashboardStats({
     required this.totalCount,
     required this.totalDurationMs,
@@ -122,6 +134,16 @@ class DashboardStats {
     this.retroPromptTokens = 0,
     this.retroCompletionTokens = 0,
     this.retroTextChanged = 0,
+    this.memoryTotalCount = 0,
+    this.memoryPendingCount = 0,
+    this.memoryWeakActiveCount = 0,
+    this.memoryActiveCount = 0,
+    this.memorySuppressedCount = 0,
+    this.memoryHighConfidenceCount = 0,
+    this.memoryWeekNewCount = 0,
+    this.memoryEventsCount = 0,
+    this.memoryPromptInjectionCount = 0,
+    this.memoryCorrectionHitCount = 0,
   });
 
   /// 空状态。
@@ -161,9 +183,20 @@ class DashboardStats {
     retroPromptTokens: 0,
     retroCompletionTokens: 0,
     retroTextChanged: 0,
+    memoryTotalCount: 0,
+    memoryPendingCount: 0,
+    memoryWeakActiveCount: 0,
+    memoryActiveCount: 0,
+    memorySuppressedCount: 0,
+    memoryHighConfidenceCount: 0,
+    memoryWeekNewCount: 0,
+    memoryEventsCount: 0,
+    memoryPromptInjectionCount: 0,
+    memoryCorrectionHitCount: 0,
   );
 
-  bool get isEmpty => totalCount == 0;
+  bool get isEmpty =>
+      totalCount == 0 && memoryTotalCount == 0 && memoryEventsCount == 0;
 
   int get enhanceTotalTokens => enhancePromptTokens + enhanceCompletionTokens;
 
@@ -186,4 +219,8 @@ class DashboardStats {
       correctionCompletionTokens +
       retroCompletionTokens;
   int get allTotalTokens => allPromptTokens + allCompletionTokens;
+
+  double get memoryHitRate => memoryPromptInjectionCount > 0
+      ? memoryCorrectionHitCount / memoryPromptInjectionCount
+      : 0;
 }

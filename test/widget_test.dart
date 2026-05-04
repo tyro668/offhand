@@ -4,6 +4,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:voicetype/app.dart';
 import 'package:voicetype/database/app_database.dart';
+import 'package:voicetype/providers/settings_provider.dart';
 import 'package:voicetype/screens/main_screen.dart';
 
 void main() {
@@ -11,6 +12,10 @@ void main() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     await AppDatabase.resetForTest();
+    await AppDatabase.instance.setSetting(
+      SettingsProvider.onboardingCompletedStorageKey,
+      'true',
+    );
   });
 
   testWidgets('App renders', (WidgetTester tester) async {
@@ -36,8 +41,9 @@ void main() {
     expect(find.byType(ShadApp), findsOneWidget);
     await tester.tap(find.text('记忆库'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('上下文'));
-    await tester.pumpAndSettle();
+    expect(find.text('添加记忆'), findsOneWidget);
+    expect(find.text('上下文'), findsNothing);
+    expect(find.text('实体'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pump(const Duration(seconds: 11));
     expect(tester.takeException(), isNull);

@@ -8,6 +8,7 @@ import '../models/dictionary_entry.dart';
 import '../models/entity_alias.dart';
 import '../models/entity_memory.dart';
 import '../models/entity_relation.dart';
+import '../models/memory_item.dart';
 import '../models/stt_request_context.dart';
 import '../models/term_context_entry.dart';
 import '../models/transcription.dart';
@@ -83,7 +84,12 @@ class RecordingProvider extends ChangeNotifier {
   List<EntityMemory> _entityMemories = const [];
   List<EntityAlias> _entityAliases = const [];
   List<EntityRelation> _entityRelations = const [];
+  List<MemoryItem> _memoryItems = const [];
   final TermPromptBuilder _termPromptBuilder = const TermPromptBuilder();
+  Future<void> Function(Map<String, TermPin> strongEntries, String sourceRef)?
+  onSessionGlossaryFlush;
+  Future<void> Function(SttRequestContext context)? onSttPromptTrace;
+  MemoryCorrectionHitRecorder? onMemoryCorrectionHit;
   String _startingLabel = 'Starting';
   String _recordingLabel = 'Recording';
   String _transcribingLabel = 'Transcribing';
@@ -108,6 +114,7 @@ class RecordingProvider extends ChangeNotifier {
     List<EntityMemory> entityMemories = const [],
     List<EntityAlias> entityAliases = const [],
     List<EntityRelation> entityRelations = const [],
+    List<MemoryItem> memoryItems = const [],
     int maxReferenceEntries = 15,
     double minCandidateScore = 0.30,
   }) {
@@ -116,6 +123,7 @@ class RecordingProvider extends ChangeNotifier {
     _entityMemories = List<EntityMemory>.from(entityMemories);
     _entityAliases = List<EntityAlias>.from(entityAliases);
     _entityRelations = List<EntityRelation>.from(entityRelations);
+    _memoryItems = List<MemoryItem>.from(memoryItems);
     _correctionService = CorrectionService(
       matcher: matcher,
       context: _correctionContext,
@@ -127,7 +135,9 @@ class RecordingProvider extends ChangeNotifier {
       entityMemories: _entityMemories,
       entityAliases: _entityAliases,
       entityRelations: _entityRelations,
+      memoryItems: _memoryItems,
       sessionEntityState: _sessionEntityState,
+      onMemoryCorrectionHit: onMemoryCorrectionHit,
     );
   }
 
@@ -139,6 +149,7 @@ class RecordingProvider extends ChangeNotifier {
     _entityMemories = const [];
     _entityAliases = const [];
     _entityRelations = const [];
+    _memoryItems = const [];
   }
 
   /// 设置终态回溯纠错开关。
@@ -431,6 +442,9 @@ class RecordingProvider extends ChangeNotifier {
             scene: 'dictation',
             currentText: _realtimeTextBuffer.toString(),
           );
+          if (sttContext != null) {
+            unawaited(_recordPromptTrace(sttContext));
+          }
           var text = await SttService(
             config,
           ).transcribe(path, context: sttContext);
@@ -480,6 +494,7 @@ class RecordingProvider extends ChangeNotifier {
       entityMemories: _entityMemories,
       entityAliases: _entityAliases,
       entityRelations: _entityRelations,
+      memoryItems: _memoryItems,
     );
     if (!bundle.hasPrompt) return null;
     return SttRequestContext(
@@ -487,7 +502,33 @@ class RecordingProvider extends ChangeNotifier {
       prompt: bundle.sttPrompt,
       preferredTerms: bundle.preferredTerms,
       preserveTerms: bundle.preserveTerms,
+      promptTraceId: const Uuid().v4(),
+      includedMemoryItemIds: bundle.includedMemoryItemIds,
+      includedWeakMemoryItemIds: bundle.includedWeakMemoryItemIds,
+      memorySnapshotVersion: _memorySnapshotVersion(),
     );
+  }
+
+  Future<void> _recordPromptTrace(SttRequestContext context) async {
+    if (context.includedMemoryItemIds.isEmpty &&
+        context.includedWeakMemoryItemIds.isEmpty) {
+      return;
+    }
+    final recorder = onSttPromptTrace;
+    if (recorder == null) return;
+    try {
+      await recorder(context);
+    } catch (_) {}
+  }
+
+  String _memorySnapshotVersion() {
+    if (_memoryItems.isEmpty) return 'empty';
+    var latest = 0;
+    for (final item in _memoryItems) {
+      final updated = item.updatedAt.millisecondsSinceEpoch;
+      if (updated > latest) latest = updated;
+    }
+    return '${_memoryItems.length}:$latest';
   }
 
   void _appendRealtimeText(String text) {
@@ -917,6 +958,10 @@ class RecordingProvider extends ChangeNotifier {
           await _historyDb.insert(item);
         } catch (e) {
           // ignore
+        }
+        final strongGlossary = _sessionGlossary.strongEntries;
+        if (strongGlossary.isNotEmpty && onSessionGlossaryFlush != null) {
+          unawaited(onSessionGlossaryFlush!(strongGlossary, item.id));
         }
         try {
           await LogService.info('TRANSCRIBE', 'inserting text...');

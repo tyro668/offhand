@@ -420,20 +420,20 @@ class _PromptWorkshopPageState extends State<PromptWorkshopPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: _cs.primaryContainer,
+              color: _cs.primary,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.check_circle, size: 14, color: _cs.primary),
+                Icon(Icons.check_circle, size: 14, color: _cs.onPrimary),
                 const SizedBox(width: 4),
                 Text(
                   l10n.inUse,
                   style: TextStyle(
                     fontSize: 12,
-                    color: _cs.primary,
-                    fontWeight: FontWeight.w500,
+                    color: _cs.onPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],

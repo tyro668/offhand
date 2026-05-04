@@ -26,6 +26,14 @@ flutter run  -d windows
 
 **注意：** mac上使用该应用需要自己去隐私与安全性中允许该应用，如图所示：![mac](screenshots/mac_start.png)
 
+如果 macOS 提示“无法打开，因为无法验证开发者”或应用被隔离，也可以在终端执行：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Offhand.app
+```
+
+如果应用不在 `/Applications`，请将路径替换为实际的 `.app` 路径。
+
 ### mac版本
 ```
 flutter build macos --release

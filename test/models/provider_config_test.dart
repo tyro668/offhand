@@ -54,6 +54,13 @@ void main() {
         expect(preset.model, isNotEmpty);
         expect(preset.availableModels, isNotEmpty);
       }
+      final local = presets.firstWhere(
+        (preset) => preset.type == SttProviderType.senseVoice,
+      );
+      expect(
+        local.availableModels.map((model) => model.id),
+        contains('sense-voice-zh-en-fp32'),
+      );
     });
 
     test('fromPresetJsonList parses valid input', () {
@@ -77,6 +84,27 @@ void main() {
       expect(presets[0].model, 'custom-model');
       expect(presets[0].availableModels.length, 1);
       expect(presets[0].availableModels[0].id, 'custom-model');
+    });
+
+    test('fromPresetJsonList accepts local SenseVoice with empty baseUrl', () {
+      final jsonList = [
+        {
+          'name': 'Local Model',
+          'baseUrl': '',
+          'type': 'senseVoice',
+          'defaultModel': 'sense-voice-zh-en-fp32',
+          'models': [
+            {'id': 'sense-voice-zh-en-fp32', 'description': 'SenseVoice FP32'},
+          ],
+        },
+      ];
+
+      final presets = SttProviderConfig.fromPresetJsonList(jsonList);
+
+      expect(presets.length, 1);
+      expect(presets[0].type, SttProviderType.senseVoice);
+      expect(presets[0].baseUrl, isEmpty);
+      expect(presets[0].model, 'sense-voice-zh-en-fp32');
     });
 
     test('fromPresetJsonList filters out invalid entries', () {

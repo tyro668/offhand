@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import '../database/app_database.dart';
 import '../models/dashboard_stats.dart';
+import '../models/memory_event.dart';
+import '../models/memory_item.dart';
 import 'correction_stats_service.dart';
 import 'token_stats_service.dart';
 
@@ -9,6 +13,8 @@ import 'token_stats_service.dart';
 class DashboardService {
   DashboardService._();
   static final instance = DashboardService._();
+  static const _adaptiveMemoryItemsKey = 'adaptive_memory_items_v1';
+  static const _memoryEventsKey = 'memory_events_v1';
 
   final _db = AppDatabase.instance;
 
@@ -17,7 +23,6 @@ class DashboardService {
     TrendGranularity granularity = TrendGranularity.day,
   }) async {
     final all = await _db.getAllHistory();
-    if (all.isEmpty) return DashboardStats.empty;
 
     // ── 核心汇总 ──
     final totalCount = all.length;
@@ -94,7 +99,9 @@ class DashboardService {
     }
 
     // ── 活跃度 ──
-    final lastTranscriptionAt = all.first.createdAt; // getAll 按 DESC 排序
+    final lastTranscriptionAt = all.isEmpty
+        ? null
+        : all.first.createdAt; // getAll 按 DESC 排序
     final sortedDays = dailyMap.keys.toList()..sort();
 
     // 最活跃的一天
@@ -122,6 +129,9 @@ class DashboardService {
 
     // ── 纠错 token 用量 ──
     final correctionStats = await CorrectionStatsService.instance.getSnapshot();
+
+    // ── 学习记忆 ──
+    final learningStats = await _computeLearningStats(weekStart: weekStart);
 
     return DashboardStats(
       totalCount: totalCount,
@@ -161,7 +171,102 @@ class DashboardService {
       retroPromptTokens: correctionStats.retroPromptTokens,
       retroCompletionTokens: correctionStats.retroCompletionTokens,
       retroTextChanged: correctionStats.retroTextChanged,
+      memoryTotalCount: learningStats.totalCount,
+      memoryPendingCount: learningStats.pendingCount,
+      memoryWeakActiveCount: learningStats.weakActiveCount,
+      memoryActiveCount: learningStats.activeCount,
+      memorySuppressedCount: learningStats.suppressedCount,
+      memoryHighConfidenceCount: learningStats.highConfidenceCount,
+      memoryWeekNewCount: learningStats.weekNewCount,
+      memoryEventsCount: learningStats.eventsCount,
+      memoryPromptInjectionCount: learningStats.promptInjectionCount,
+      memoryCorrectionHitCount: learningStats.correctionHitCount,
     );
+  }
+
+  Future<_LearningStats> _computeLearningStats({
+    required DateTime weekStart,
+  }) async {
+    try {
+      final memoryJson = await _db.getSetting(_adaptiveMemoryItemsKey);
+      final eventJson = await _db.getSetting(_memoryEventsKey);
+      final memoryItems = _decodeMemoryItems(memoryJson);
+      final memoryEvents = _decodeMemoryEvents(eventJson);
+
+      var pending = 0;
+      var weakActive = 0;
+      var active = 0;
+      var suppressed = 0;
+      var highConfidence = 0;
+      var weekNew = 0;
+      var promptInjections = 0;
+      var correctionHits = 0;
+
+      for (final item in memoryItems) {
+        switch (item.status) {
+          case MemoryItemStatus.pending:
+            pending++;
+            break;
+          case MemoryItemStatus.weakActive:
+            weakActive++;
+            break;
+          case MemoryItemStatus.active:
+            active++;
+            break;
+          case MemoryItemStatus.suppressed:
+            suppressed++;
+            break;
+          case MemoryItemStatus.archived:
+            break;
+        }
+        if (!item.createdAt.isBefore(weekStart)) weekNew++;
+        if (item.status == MemoryItemStatus.weakActive &&
+            item.stats.evidenceCount >= 3 &&
+            item.stats.negativeCount == 0 &&
+            item.confidence >= 0.8) {
+          highConfidence++;
+        }
+        promptInjections += item.stats.promptInjectionCount;
+        correctionHits += item.stats.correctionHitCount;
+      }
+
+      return _LearningStats(
+        totalCount: memoryItems
+            .where((item) => item.status != MemoryItemStatus.archived)
+            .length,
+        pendingCount: pending,
+        weakActiveCount: weakActive,
+        activeCount: active,
+        suppressedCount: suppressed,
+        highConfidenceCount: highConfidence,
+        weekNewCount: weekNew,
+        eventsCount: memoryEvents.length,
+        promptInjectionCount: promptInjections,
+        correctionHitCount: correctionHits,
+      );
+    } catch (_) {
+      return const _LearningStats();
+    }
+  }
+
+  List<MemoryItem> _decodeMemoryItems(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const [];
+    final list = json.decode(raw) as List<dynamic>;
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(MemoryItem.fromJson)
+        .where((item) => item.displayText.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  List<MemoryEvent> _decodeMemoryEvents(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const [];
+    final list = json.decode(raw) as List<dynamic>;
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(MemoryEvent.fromJson)
+        .where((event) => event.id.isNotEmpty)
+        .toList(growable: false);
   }
 
   // ── 连续天数 ──
@@ -288,4 +393,30 @@ class _DailyAccumulator {
   int count = 0;
   int durationMs = 0;
   int charCount = 0;
+}
+
+class _LearningStats {
+  final int totalCount;
+  final int pendingCount;
+  final int weakActiveCount;
+  final int activeCount;
+  final int suppressedCount;
+  final int highConfidenceCount;
+  final int weekNewCount;
+  final int eventsCount;
+  final int promptInjectionCount;
+  final int correctionHitCount;
+
+  const _LearningStats({
+    this.totalCount = 0,
+    this.pendingCount = 0,
+    this.weakActiveCount = 0,
+    this.activeCount = 0,
+    this.suppressedCount = 0,
+    this.highConfidenceCount = 0,
+    this.weekNewCount = 0,
+    this.eventsCount = 0,
+    this.promptInjectionCount = 0,
+    this.correctionHitCount = 0,
+  });
 }

@@ -431,6 +431,23 @@ class _GeneralPageState extends State<GeneralPage> {
                 _buildLanguageSelector(settings, l10n),
                 const SizedBox(height: 36),
 
+                Text(
+                  l10n.onboardingRelaunchTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: _cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.onboardingRelaunchDescription,
+                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                _buildOnboardingRelaunchSection(settings, l10n),
+                const SizedBox(height: 36),
+
                 // ===== 外观主题 =====
                 Text(
                   l10n.theme,
@@ -468,38 +485,10 @@ class _GeneralPageState extends State<GeneralPage> {
                 const SizedBox(height: 36),
 
                 // ===== 日志 =====
-                Text(
-                  l10n.logs,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.logsDescription,
-                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-                ),
-                const SizedBox(height: 16),
                 _buildLogSection(l10n),
-                const SizedBox(height: 36),
+                const SizedBox(height: 16),
 
                 // ===== 录音文件存储 =====
-                Text(
-                  l10n.recordingStorage,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: _cs.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.recordingStorageDescription,
-                  style: TextStyle(fontSize: 14, color: _cs.onSurfaceVariant),
-                ),
-                const SizedBox(height: 16),
                 _buildRecordingsSection(l10n),
               ],
             ),
@@ -934,6 +923,63 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
+  Widget _buildOnboardingRelaunchSection(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: _cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cs.outlineVariant.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.flag_outlined, size: 20, color: _cs.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              l10n.onboardingRelaunchSwitch,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _cs.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Switch.adaptive(
+            value: settings.onboardingScheduledForNextLaunch,
+            onChanged: (enabled) =>
+                _setOnboardingForNextLaunch(settings, l10n, enabled),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _setOnboardingForNextLaunch(
+    SettingsProvider settings,
+    AppLocalizations l10n,
+    bool enabled,
+  ) async {
+    await settings.setOnboardingForNextLaunch(enabled);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          enabled
+              ? l10n.onboardingRelaunchScheduled
+              : l10n.onboardingRelaunchCancelled,
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Widget _buildLocalModelIdleUnloadSection(
     SettingsProvider settings,
     AppLocalizations l10n,
@@ -990,7 +1036,7 @@ class _GeneralPageState extends State<GeneralPage> {
   Widget _buildLogSection(AppLocalizations l10n) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cs.surface,
         borderRadius: BorderRadius.circular(16),
@@ -1001,14 +1047,10 @@ class _GeneralPageState extends State<GeneralPage> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.description_outlined,
-                color: _cs.onSurfaceVariant,
-                size: 20,
-              ),
+              Icon(Icons.description_outlined, color: _cs.primary, size: 20),
               const SizedBox(width: 8),
               Text(
-                l10n.logFile,
+                l10n.logs,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -1024,7 +1066,7 @@ class _GeneralPageState extends State<GeneralPage> {
                   ),
                   decoration: BoxDecoration(
                     color: _cs.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     LogService.formatFileSize(_logFileSize ?? 0),
@@ -1042,7 +1084,7 @@ class _GeneralPageState extends State<GeneralPage> {
                   ),
                   decoration: BoxDecoration(
                     color: _cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     l10n.noLogFile,
@@ -1051,58 +1093,23 @@ class _GeneralPageState extends State<GeneralPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SelectableText(
-                _logPath.isEmpty ? l10n.loading : _logPath,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: _cs.onSurfaceVariant,
-                ),
-                maxLines: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _logPath.isNotEmpty ? _openLogDirectory : null,
-                  icon: const Icon(Icons.folder_open_outlined, size: 18),
-                  label: Text(l10n.openLogDirectory),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _cs.primary,
-                    foregroundColor: _cs.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
+              Expanded(child: _buildPathDisplay(_logPath, l10n)),
+              const SizedBox(width: 8),
+              _StorageIconButton(
+                icon: Icons.folder_open_outlined,
+                tooltip: l10n.openLogDirectory,
+                onPressed: _logPath.isNotEmpty ? _openLogDirectory : null,
+                foregroundColor: _cs.primary,
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
+              const SizedBox(width: 4),
+              _StorageIconButton(
+                icon: Icons.copy,
+                tooltip: l10n.copyLogPath,
                 onPressed: _logPath.isNotEmpty ? _copyLogPath : null,
-                icon: const Icon(Icons.copy, size: 18),
-                label: Text(l10n.copyLogPath),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _cs.onSurfaceVariant,
-                  side: BorderSide(color: _cs.outline),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                foregroundColor: _cs.onSurfaceVariant,
               ),
             ],
           ),
@@ -1111,10 +1118,34 @@ class _GeneralPageState extends State<GeneralPage> {
     );
   }
 
+  Widget _buildPathDisplay(String path, AppLocalizations l10n) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SelectableText(
+          path.isEmpty ? l10n.loading : path,
+          style: TextStyle(
+            fontSize: 13,
+            fontFamily: 'monospace',
+            color: _cs.onSurfaceVariant,
+          ),
+          maxLines: 1,
+        ),
+      ),
+    );
+  }
+
   Widget _buildRecordingsSection(AppLocalizations l10n) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cs.surface,
         borderRadius: BorderRadius.circular(16),
@@ -1125,14 +1156,10 @@ class _GeneralPageState extends State<GeneralPage> {
         children: [
           Row(
             children: [
-              Icon(
-                Icons.folder_outlined,
-                color: _cs.onSurfaceVariant,
-                size: 20,
-              ),
+              Icon(Icons.folder_outlined, color: _cs.primary, size: 20),
               const SizedBox(width: 8),
               Text(
-                l10n.recordingFiles,
+                l10n.recordingStorage,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -1144,7 +1171,7 @@ class _GeneralPageState extends State<GeneralPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _cs.tertiaryContainer,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   '$_recordingsFileCount ${l10n.files}  ·  ${LogService.formatFileSize(_recordingsTotalSize)}',
@@ -1153,80 +1180,34 @@ class _GeneralPageState extends State<GeneralPage> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SelectableText(
-                _recordingsDirPath.isEmpty ? l10n.loading : _recordingsDirPath,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: _cs.onSurfaceVariant,
-                ),
-                maxLines: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _recordingsDirPath.isNotEmpty
-                      ? _openRecordingsDirectory
-                      : null,
-                  icon: const Icon(Icons.folder_open_outlined, size: 18),
-                  label: Text(l10n.openRecordingFolder),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _cs.primary,
-                    foregroundColor: _cs.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
+              Expanded(child: _buildPathDisplay(_recordingsDirPath, l10n)),
+              const SizedBox(width: 8),
+              _StorageIconButton(
+                icon: Icons.folder_open_outlined,
+                tooltip: l10n.openRecordingFolder,
+                onPressed: _recordingsDirPath.isNotEmpty
+                    ? _openRecordingsDirectory
+                    : null,
+                foregroundColor: _cs.primary,
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
+              const SizedBox(width: 4),
+              _StorageIconButton(
+                icon: Icons.copy,
+                tooltip: l10n.copyPath,
                 onPressed: _recordingsDirPath.isNotEmpty
                     ? _copyRecordingsPath
                     : null,
-                icon: const Icon(Icons.copy, size: 18),
-                label: Text(l10n.copyPath),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _cs.onSurfaceVariant,
-                  side: BorderSide(color: _cs.outline),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                foregroundColor: _cs.onSurfaceVariant,
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
+              const SizedBox(width: 4),
+              _StorageIconButton(
+                icon: Icons.delete_outline,
+                tooltip: l10n.clearRecordingFiles,
                 onPressed: _recordingsFileCount > 0 ? _clearRecordings : null,
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: Text(l10n.clearRecordingFiles),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: BorderSide(
-                    color: _recordingsFileCount > 0
-                        ? Colors.red.shade300
-                        : _cs.outline,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                foregroundColor: _cs.error,
               ),
             ],
           ),
@@ -1381,6 +1362,49 @@ class _GeneralPageState extends State<GeneralPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StorageIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Color foregroundColor;
+
+  const _StorageIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    required this.foregroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 18),
+          padding: EdgeInsets.zero,
+          style: IconButton.styleFrom(
+            foregroundColor: foregroundColor,
+            disabledForegroundColor: cs.outline.withValues(alpha: 0.55),
+            backgroundColor: cs.surfaceContainerHighest,
+            disabledBackgroundColor: cs.surfaceContainerHighest.withValues(
+              alpha: 0.55,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+            ),
+          ),
+        ),
       ),
     );
   }

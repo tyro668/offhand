@@ -15,6 +15,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loading => 'Loading...';
 
   @override
+  String get onboardingTitle => 'Quick setup';
+
+  @override
+  String get onboardingSubtitle =>
+      'Configure hotkey, speech model, and text enhancement.';
+
+  @override
+  String get onboardingShortcutStep => 'Hotkey';
+
+  @override
+  String get onboardingVoiceStep => 'Speech Model';
+
+  @override
+  String get onboardingTextStep => 'Text Enhancement';
+
+  @override
+  String get onboardingSkipForNow => 'Later';
+
+  @override
+  String get onboardingBack => 'Back';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingComplete => 'Done';
+
+  @override
+  String get onboardingShortcutTitle => 'Start Mode';
+
+  @override
+  String get onboardingShortcutDescription =>
+      'Set the voice input hotkey and trigger mode.';
+
+  @override
+  String get onboardingCurrentHotkey => 'Current hotkey';
+
+  @override
+  String get onboardingVoiceTitle => 'Speech Model';
+
+  @override
+  String get onboardingVoiceDescription => 'Configure speech recognition.';
+
+  @override
+  String get onboardingCurrentVoiceModel => 'Current speech model';
+
+  @override
+  String get onboardingTextTitle => 'Text Enhancement';
+
+  @override
+  String get onboardingTextDescription => 'Configure text enhancement.';
+
+  @override
+  String get onboardingCurrentTextModel => 'Current text model';
+
+  @override
+  String get onboardingEnableTextEnhancement => 'Enable text enhancement';
+
+  @override
+  String get onboardingSaveVoiceModel => 'Save speech model';
+
+  @override
+  String get onboardingSaveTextModel => 'Save text model';
+
+  @override
+  String get onboardingModelSaved => 'Model saved and enabled';
+
+  @override
+  String get onboardingNotConfigured => 'Not configured';
+
+  @override
+  String get onboardingLocalModelNotice =>
+      'Manage local model files in Speech Model settings.';
+
+  @override
   String get generalSettings => 'General';
 
   @override
@@ -182,6 +257,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get simplifiedChinese => '简体中文';
+
+  @override
+  String get onboardingRelaunchTitle => 'Startup Guide';
+
+  @override
+  String get onboardingRelaunchDescription =>
+      'Show the first-run setup guide again on next launch. Useful for testing onboarding.';
+
+  @override
+  String get onboardingRelaunchSwitch => 'Show guide on next launch';
+
+  @override
+  String get onboardingRelaunchScheduled =>
+      'Startup guide will show on next launch';
+
+  @override
+  String get onboardingRelaunchCancelled => 'Startup guide reset cancelled';
 
   @override
   String get logsDescription => 'View and manage application log files.';
@@ -945,6 +1037,65 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dictionaryDescription =>
       'Set up correction and preservation rules to help AI output professional terms and fixed expressions more accurately.';
+
+  @override
+  String memorySourceLabel(String value) {
+    return 'Source: $value';
+  }
+
+  @override
+  String get memorySourceManual => 'Manual';
+
+  @override
+  String get memorySourceHistoryEdit => 'History edit';
+
+  @override
+  String get memorySourcePending => 'Pending suggestion';
+
+  @override
+  String get memorySourceSession => 'Session';
+
+  @override
+  String get memorySourceSessionGlossary => 'Session glossary';
+
+  @override
+  String get memorySourceMarkdown => 'Markdown';
+
+  @override
+  String get memorySourceMarkdownDocument => 'Markdown document';
+
+  @override
+  String get memorySourceMarkdownImport => 'Markdown import';
+
+  @override
+  String get memorySourceEntityMemory => 'Entity memory';
+
+  @override
+  String get memorySourcePromptTrace => 'Prompt trace';
+
+  @override
+  String get memorySourceCorrectionLog => 'Correction log';
+
+  @override
+  String get memorySourceDictionaryAccept => 'Dictionary acceptance';
+
+  @override
+  String get memorySourceDictionaryReject => 'Dictionary rejection';
+
+  @override
+  String get memorySourceEntityLearning => 'Entity learning';
+
+  @override
+  String get memorySourceRealtime => 'Realtime correction';
+
+  @override
+  String get memorySourceRetrospective => 'Retrospective correction';
+
+  @override
+  String get memorySourceSystem => 'System';
+
+  @override
+  String get memoryPromptInjections => 'Prompt injections';
 
   @override
   String get dictionaryAdd => 'Add Rule';

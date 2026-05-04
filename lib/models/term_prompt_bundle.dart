@@ -4,6 +4,8 @@ class TermPromptBundle {
   final List<String> preferredTerms;
   final List<String> preserveTerms;
   final List<String> correctionReferences;
+  final List<String> includedMemoryItemIds;
+  final List<String> includedWeakMemoryItemIds;
   final String entityCorrectionSection;
   final String entityRelationSection;
 
@@ -13,6 +15,8 @@ class TermPromptBundle {
     this.preferredTerms = const [],
     this.preserveTerms = const [],
     this.correctionReferences = const [],
+    this.includedMemoryItemIds = const [],
+    this.includedWeakMemoryItemIds = const [],
     this.entityCorrectionSection = '',
     this.entityRelationSection = '',
   });

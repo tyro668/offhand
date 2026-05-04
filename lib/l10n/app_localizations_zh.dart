@@ -15,6 +15,78 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loading => '加载中...';
 
   @override
+  String get onboardingTitle => '快速设置';
+
+  @override
+  String get onboardingSubtitle => '配置快捷键、语音模型和文本增强。';
+
+  @override
+  String get onboardingShortcutStep => '快捷键';
+
+  @override
+  String get onboardingVoiceStep => '语音模型';
+
+  @override
+  String get onboardingTextStep => '文本增强';
+
+  @override
+  String get onboardingSkipForNow => '稍后';
+
+  @override
+  String get onboardingBack => '返回';
+
+  @override
+  String get onboardingNext => '下一步';
+
+  @override
+  String get onboardingComplete => '完成';
+
+  @override
+  String get onboardingShortcutTitle => '启动方式';
+
+  @override
+  String get onboardingShortcutDescription => '设置语音输入快捷键和触发方式。';
+
+  @override
+  String get onboardingCurrentHotkey => '当前快捷键';
+
+  @override
+  String get onboardingVoiceTitle => '语音模型';
+
+  @override
+  String get onboardingVoiceDescription => '配置语音识别模型。';
+
+  @override
+  String get onboardingCurrentVoiceModel => '当前语音模型';
+
+  @override
+  String get onboardingTextTitle => '文本增强';
+
+  @override
+  String get onboardingTextDescription => '配置文本增强模型。';
+
+  @override
+  String get onboardingCurrentTextModel => '当前文本模型';
+
+  @override
+  String get onboardingEnableTextEnhancement => '启用文本增强';
+
+  @override
+  String get onboardingSaveVoiceModel => '保存语音模型';
+
+  @override
+  String get onboardingSaveTextModel => '保存文本模型';
+
+  @override
+  String get onboardingModelSaved => '模型已保存并启用';
+
+  @override
+  String get onboardingNotConfigured => '未配置';
+
+  @override
+  String get onboardingLocalModelNotice => '本地模型文件在语音模型页管理。';
+
+  @override
   String get generalSettings => '通用设置';
 
   @override
@@ -176,6 +248,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get simplifiedChinese => '简体中文';
+
+  @override
+  String get onboardingRelaunchTitle => '启动向导';
+
+  @override
+  String get onboardingRelaunchDescription =>
+      '用于测试首次使用流程。开启后只会在下次启动时显示向导，不会立即弹出。';
+
+  @override
+  String get onboardingRelaunchSwitch => '下次启动时显示启动向导';
+
+  @override
+  String get onboardingRelaunchScheduled => '下次启动将显示启动向导';
+
+  @override
+  String get onboardingRelaunchCancelled => '已取消下次启动显示启动向导';
 
   @override
   String get logsDescription => '查看和管理应用程序日志文件。';
@@ -906,6 +994,65 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get dictionaryDescription => '设置词语纠正和保留规则，帮助 AI 更准确地输出专业术语和固定用语。';
+
+  @override
+  String memorySourceLabel(String value) {
+    return '来源: $value';
+  }
+
+  @override
+  String get memorySourceManual => '手动添加';
+
+  @override
+  String get memorySourceHistoryEdit => '历史修正';
+
+  @override
+  String get memorySourcePending => '待确认建议';
+
+  @override
+  String get memorySourceSession => '当前会话';
+
+  @override
+  String get memorySourceSessionGlossary => '会话术语';
+
+  @override
+  String get memorySourceMarkdown => 'Markdown';
+
+  @override
+  String get memorySourceMarkdownDocument => 'Markdown 文档';
+
+  @override
+  String get memorySourceMarkdownImport => 'Markdown 导入';
+
+  @override
+  String get memorySourceEntityMemory => '实体记忆';
+
+  @override
+  String get memorySourcePromptTrace => '提示词记录';
+
+  @override
+  String get memorySourceCorrectionLog => '纠错日志';
+
+  @override
+  String get memorySourceDictionaryAccept => '词典确认';
+
+  @override
+  String get memorySourceDictionaryReject => '词典拒绝';
+
+  @override
+  String get memorySourceEntityLearning => '实体学习';
+
+  @override
+  String get memorySourceRealtime => '实时纠错';
+
+  @override
+  String get memorySourceRetrospective => '终态回溯';
+
+  @override
+  String get memorySourceSystem => '系统';
+
+  @override
+  String get memoryPromptInjections => '提示词注入';
 
   @override
   String get dictionaryAdd => '添加规则';

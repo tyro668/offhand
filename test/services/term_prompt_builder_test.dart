@@ -3,6 +3,7 @@ import 'package:voicetype/models/dictionary_entry.dart';
 import 'package:voicetype/models/entity_alias.dart';
 import 'package:voicetype/models/entity_memory.dart';
 import 'package:voicetype/models/entity_relation.dart';
+import 'package:voicetype/models/memory_item.dart';
 import 'package:voicetype/models/term_context_entry.dart';
 import 'package:voicetype/models/transcription.dart';
 import 'package:voicetype/services/session_entity_state.dart';
@@ -161,5 +162,67 @@ void main() {
         expect(bundle.sttPrompt, contains('帆软'));
       },
     );
+
+    test(
+      'uses active memory in STT prompt and weak memory only in references',
+      () {
+        final active = MemoryItem.create(
+          kind: MemoryItemKind.correction,
+          status: MemoryItemStatus.active,
+          scope: MemoryItemScope.user,
+          original: '反软',
+          canonical: '帆软',
+        );
+        final weak = MemoryItem.create(
+          kind: MemoryItemKind.correction,
+          status: MemoryItemStatus.weakActive,
+          scope: MemoryItemScope.user,
+          original: '低铺戏客',
+          canonical: 'DeepSeek',
+        );
+
+        final bundle = builder.build(
+          scene: 'dictation',
+          currentText: '今天讨论低铺戏客',
+          history: const [],
+          dictionaryEntries: const [],
+          sessionGlossary: SessionGlossary(),
+          memoryItems: [active, weak],
+        );
+
+        expect(bundle.sttPrompt, contains('帆软'));
+        expect(bundle.sttPrompt, isNot(contains('DeepSeek')));
+        expect(bundle.correctionReferences, contains('反软->帆软'));
+        expect(bundle.correctionReferences, contains('低铺戏客->DeepSeek'));
+        expect(bundle.includedMemoryItemIds, contains(active.id));
+        expect(bundle.includedMemoryItemIds, isNot(contains(weak.id)));
+        expect(bundle.includedWeakMemoryItemIds, contains(weak.id));
+      },
+    );
+
+    test('uses active reference memory as STT context', () {
+      final reference = MemoryItem.create(
+        kind: MemoryItemKind.reference,
+        status: MemoryItemStatus.active,
+        scope: MemoryItemScope.user,
+        canonical: '项目背景',
+        content: 'Offhand 是一个用于语音输入和上下文增强的工具。',
+      );
+
+      final bundle = builder.build(
+        scene: 'dictation',
+        currentText: '',
+        history: const [],
+        dictionaryEntries: const [],
+        sessionGlossary: SessionGlossary(),
+        memoryItems: [reference],
+      );
+
+      expect(bundle.hasPrompt, isTrue);
+      expect(bundle.sttPrompt, contains('参考以下记忆片段'));
+      expect(bundle.sttPrompt, contains('Offhand 是一个用于语音输入'));
+      expect(bundle.memoryPromptSuffix, contains('可参考以下手动记忆片段'));
+      expect(bundle.includedMemoryItemIds, contains(reference.id));
+    });
   });
 }

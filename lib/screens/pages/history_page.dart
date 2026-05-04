@@ -8,6 +8,7 @@ import '../../models/dictionary_entry.dart';
 import '../../models/dictation_term_pending_candidate.dart';
 import '../../models/entity_alias.dart';
 import '../../models/entity_memory.dart';
+import '../../models/memory_item.dart';
 import '../../models/transcription.dart';
 import '../../providers/recording_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -226,6 +227,13 @@ class _HistoryPageState extends State<HistoryPage> {
         skippedItems++;
         continue;
       }
+
+      await settings.recordHistoryEditToMemory(
+        beforeText: rawText,
+        afterText: editedText,
+        rawText: rawText,
+        sourceHistoryId: item.id,
+      );
 
       final candidates = _termMemoryService.extractCandidates(
         beforeText: rawText,
@@ -785,32 +793,22 @@ class _HistoryPageState extends State<HistoryPage> {
       return;
     }
 
-    final candidates = _termMemoryService.extractCandidates(
-      beforeText: item.text,
-      afterText: nextText,
-      rawText: item.rawText,
-    );
-
     final recording = context.read<RecordingProvider>();
     final settings = context.read<SettingsProvider>();
     await recording.updateHistoryText(item.id, nextText);
 
-    if (candidates.isEmpty || !mounted) {
-      return;
-    }
-
-    final learnedTerms = <String>[];
-    for (final candidate in candidates) {
-      final entry = await settings.upsertDictionaryCorrectionEntry(
-        original: candidate.original,
-        corrected: candidate.corrected,
-        source: DictionaryEntrySource.historyEdit,
-      );
-      final corrected = (entry.corrected ?? '').trim();
-      if (corrected.isNotEmpty) {
-        recording.applySessionGlossaryOverride(entry.original, corrected);
-        learnedTerms.add('${entry.original} -> $corrected');
+    final learnedMemories = await settings.recordHistoryEditToMemory(
+      beforeText: item.text,
+      afterText: nextText,
+      rawText: item.rawText,
+      sourceHistoryId: item.id,
+    );
+    for (final memory in learnedMemories) {
+      if (memory.kind != MemoryItemKind.correction ||
+          !memory.isCorrectionEligible) {
+        continue;
       }
+      recording.applySessionGlossaryOverride(memory.original, memory.canonical);
     }
     final learnedEntities = await settings.learnEntitiesFromHistoryEdit(
       beforeText: item.text,
@@ -826,13 +824,15 @@ class _HistoryPageState extends State<HistoryPage> {
       );
     }
 
-    if (!mounted || (learnedTerms.isEmpty && learnedEntities.isEmpty)) return;
+    if (!mounted || (learnedMemories.isEmpty && learnedEntities.isEmpty)) {
+      return;
+    }
     final entityNames = learnedEntities
         .map((e) => e.canonicalName)
         .toSet()
         .toList(growable: false);
     final summary = <String>[
-      if (learnedTerms.isNotEmpty) '已学习 ${learnedTerms.length} 条历史修正',
+      if (learnedMemories.isNotEmpty) '已记录 ${learnedMemories.length} 条学习记忆',
       if (entityNames.isNotEmpty) '已学习 ${entityNames.length} 个实体',
     ].join('，');
     _showFloatingSnackBar(summary, duration: const Duration(seconds: 2));

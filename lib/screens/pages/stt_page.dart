@@ -447,25 +447,26 @@ class _AddModelDialogState extends State<_AddModelDialog> {
                                 ),
                               ),
                             ),
-                            Container(
-                              margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _cs.primaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '推荐',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: _cs.onPrimaryContainer,
-                                  fontWeight: FontWeight.w600,
+                            if (model.recommended)
+                              Container(
+                                margin: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _cs.primaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '推荐',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: _cs.onPrimaryContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 2),

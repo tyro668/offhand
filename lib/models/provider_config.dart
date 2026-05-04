@@ -166,6 +166,10 @@ class SttProviderConfig {
           id: 'sense-voice-zh-en',
           description: 'SenseVoice 多语种 INT8 (~250MB) - 中/英/日/韩/粤',
         ),
+        SttModel(
+          id: 'sense-voice-zh-en-fp32',
+          description: 'SenseVoice 多语种 FP32 (~900MB) - 完整精度，更大模型文件',
+        ),
       ],
     ),
   ];

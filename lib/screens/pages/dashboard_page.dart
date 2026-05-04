@@ -99,6 +99,8 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 12),
           _buildCorrectionEfficiencySection(),
           const SizedBox(height: 12),
+          _buildLearningSection(),
+          const SizedBox(height: 12),
           _buildRetrospectiveSection(),
           const SizedBox(height: 12),
           _buildTrendSection(),
@@ -1089,6 +1091,73 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLearningSection() {
+    if (_stats.memoryTotalCount <= 0 && _stats.memoryEventsCount <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return _Card(
+      cs: _cs,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeading('学习效果', Icons.psychology_alt_outlined),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              _buildEfficiencyItem(
+                '统一记忆',
+                _formatNumber(_stats.memoryTotalCount),
+              ),
+              _buildEfficiencyItem(
+                '本周新增',
+                _formatNumber(_stats.memoryWeekNewCount),
+              ),
+              _buildEfficiencyItem(
+                '待确认',
+                _formatNumber(_stats.memoryPendingCount),
+              ),
+              _buildEfficiencyItem(
+                '弱激活',
+                _formatNumber(_stats.memoryWeakActiveCount),
+              ),
+              _buildEfficiencyItem(
+                '已启用',
+                _formatNumber(_stats.memoryActiveCount),
+              ),
+              _buildEfficiencyItem(
+                '已抑制',
+                _formatNumber(_stats.memorySuppressedCount),
+              ),
+              _buildEfficiencyItem(
+                '高可信建议',
+                _formatNumber(_stats.memoryHighConfidenceCount),
+              ),
+              _buildEfficiencyItem(
+                '证据事件',
+                _formatNumber(_stats.memoryEventsCount),
+              ),
+              _buildEfficiencyItem(
+                _l10n.memoryPromptInjections,
+                _formatNumber(_stats.memoryPromptInjectionCount),
+              ),
+              _buildEfficiencyItem(
+                '纠错命中',
+                _formatNumber(_stats.memoryCorrectionHitCount),
+              ),
+              _buildEfficiencyItem(
+                '注入后命中率',
+                _formatPercent(_stats.memoryHitRate),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
